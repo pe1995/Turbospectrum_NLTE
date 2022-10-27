@@ -1,5 +1,5 @@
 C
-      SUBROUTINE ABSKO(NEWT,NT,TSKAL,PESKAL,ISETA,J,ABSK,SPRID)
+      SUBROUTINE ABSKO(NEWT,NT,TSKAL,PESKAL,ISETA,J,ABSK,SPRID,SKIPM)
 C
 C        THE ROUTINE ADMINISTERS THE COMPUTATION OF ABSORPTION
 C        COEFFICIENTS. IT CALLS THE ROUTINES, GIVING THE PROPER THERMO-
@@ -43,6 +43,8 @@ C
       integer newt,iseta,isetp,nt,ifak,kfak,jp,kp,ntp,ioutr,j,komp
       integer ireadp,nabkof,nkompl,j1,j2,iu,position,nop,np,lunit
       real pg,dum,delsum
+
+      integer SKIPM
 
       logical first
       real TSKAL(NDP),PESKAL(NDP),ABSK(NDP),SPRID(NDP)
@@ -124,6 +126,7 @@ C
 C        FACTORS ONLY DEPENDENT ON T-PE
 C
       CALL TABS(NT,TSKAL)
+c      print*, 'in absko: sumabs (0) ',sumabs
       IFAK=1
       KFAK=1
       JP=0
@@ -142,13 +145,15 @@ C        IS PRINT-OUT WANTED FOR T-PE POINT NO. NTP
       KP=KP+1
     3 CONTINUE
 C
-      CALL JON(T(NTP),PE(NTP),1,PG,RO,DUM,IOUTR,ntp)
+      CALL JON(T(NTP),PE(NTP),1,PG,RO,DUM,SKIPM,ntp)
+c      print*, 'in absko: sumabs (1) ',sumabs
 ! save ro for HI absorption calculation
       rosav(ntp)=ro
-cc      print*,'absko back from jon, calling detabs'
+c      print*,'absko back from jon, calling detabs'
       CALL DETABS(J,0,NTP,IOUTR)
-cc      print*,'absko back from detabs, nkomp, kompr,komps',
-cc     &      nkomp,kompr,komps
+c      print*, 'in absko: sumabs (2) ',sumabs
+c      print*,'absko back from detabs, nkomp, kompr,komps',
+c     &      nkomp,kompr,komps
 C
 C        WE STORE THE FAKT ARRAY, MADE IN JON-DETABS IN LONGER ARRAYS NAMELY
 C                  IN AFAK FOR TEMPERATURE-INDEPENDENT COMPONENTS
@@ -268,9 +273,10 @@ C        A NEGATIVE INTERPOLATION RESULT
 C
 C        WE MULTIPLY BY WAVELENGTH-DEPENDENT  FACTORS AND ADD UP. THIS IS
 C        DONE IN DETABS.
-cc      print*,'absko, calling detabs 2nd time'
+c      print*,'absko, calling detabs 2nd time'
       CALL DETABS(J,JP,NTP,IOUTR)
-cc      print*,'absko, back from detabs'
+c      print*,'absko, back from detabs'
+c      print*, 'in absko: sumabs (3) ',sumabs
 !
 ! Must add HI bf absorption with improved treatment from Barklem&Piskunov
 ! BPz 03/04-2019
@@ -311,7 +317,6 @@ c
       call hbop(xlambda,nline,nlo,nup,hlambda,
      &         nh1,nhe1,ne,t(ntp),dopple,npop,1.,0,total,cont,
      &         contonly,lineonly)
-
       sumabs=sumabs+cont/rosav(ntp)
 !
 ! now HI bf absorption is included !

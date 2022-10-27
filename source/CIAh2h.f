@@ -41,10 +41,16 @@
         enddo
         first=.false.
         close(33)
+
       endif
 
 * no extrapolation to higher wavenumbers!!
       if (omega.gt.wave(1)) then
+        propac=0.
+        return
+      endif
+
+      if (t.gt.temp(ntemp)) then
         propac=0.
         return
       endif

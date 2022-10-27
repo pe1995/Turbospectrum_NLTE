@@ -391,16 +391,20 @@ C        H I
       DO 12 KOMP=2,16
         SUMABS=SUMABS+AB(KOMP)
    12 CONTINUE
+c      print*, 'detabs sumabs HI 1', sumabs
       sumabs=sumabs+ab(18)
       SUMABS=(SUMABS+HREST(NTP))*XLA3(JP)
       PROV(2)=SUMABS
+c      print*, 'detabs sumabs HI 2', sumabs
 C        H-
       HMIN=AB(1)+AB(19)/STIM
       SUMABS=SUMABS+HMIN
       PROV(1)=HMIN
+c      print*, 'detabs sumabs H-', sumabs
 C Fe I bf     NEW: OP data from DK 98-08-23 revised later. Still needs revision 
 C   (smoothing resonance and not remove them) BPz 19/09-2007
       SUMABS=SUMABS+AB(17)
+c      print*, 'detabs sumabs FeI', sumabs
       PROV(3)=AB(17)
 c stimulated emission already included in table in jonabs.dat for negative ions
 c He-
@@ -435,6 +439,7 @@ C
         SUMABS=SUMABS+AB(KOMP)
         PROV(KOMP-16)=AB(KOMP)
    13 CONTINUE
+c      print*, 'detabs sumabs others', sumabs
 
 ***********************************
 ***      if (xla(j).gt.1100.and.xla(j).lt.2000..and.ab(20).gt.0.e0) then
@@ -463,6 +468,7 @@ cc        call heborysowopac(omega,t(ntp),propac)
         CALL HEOPAC(OMEGA,T(NTP),PROPAC)
       endif
       HEPRES=PROPAC*PHEL(NTP)/stim
+c      print *, 'PROPAC PHEL stim',PROPAC,PHEL(NTP),stim
       PROV(NPROVA-2)=HEPRES
       if(borysow) then
         call CIAh2h(omega,t(ntp),propac)
@@ -479,8 +485,31 @@ cc        call heborysowopac(omega,t(ntp),propac)
       hhepres=propac*phhe(ntp)/stim
       prov(nprova)=hhepres
 *
+      if (isnan(H2PRES))  then
+            print*,'NaN in H2PRES'
+            H2PRES=0.0
+      endif
+      if (isnan(HEPRES))  then
+            print*,'NaN in HEPRES'
+            HEPRES=0.0
+      endif
+      if (isnan(h2hpres)) then
+            print*,'NaN in h2hpres'
+            h2hpres=0.0
+      endif
+      if (isnan(hhepres)) then
+            print*,'NaN in hhepres'
+            hhepres=0.0
+      endif
+c
       SUMABS=SUMABS+H2PRES+HEPRES+h2hpres+hhepres
       SUMABS=SUMABS*STIM
+c      print*,'detabs H2PRES,HEPRES,h2hpres,hhepres',
+c     &   H2PRES,HEPRES,h2hpres,hhepres
+c      print*,'detabs PROPAC,PHEL(NTP),stim,fac',
+c     &   PROPAC,PHEL(NTP),stim,
+c     &   PROPAC*PHEL(NTP)/stim
+c      print*, 'detabs sumabs end', sumabs
 C
 C        SCATTERING
       XRAY=AMAX1(XLA(JP),1026.)

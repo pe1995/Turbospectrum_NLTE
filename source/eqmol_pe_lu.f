@@ -142,7 +142,7 @@ C
         switer=.true.
 C
 * read atomic data file
-
+c      print*,"first in eqmol_pe_lu",first
       if (first) then
 	WRITE(6,6102)
 *
@@ -296,18 +296,22 @@ cc        print*,'eqmol before molecpartf, nmol',nmol
         call molecpartf(tem,found)
 cc        print*,'eqmol after molecpartf, nmol',nmol
         nmotsuji=nmol
-	call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
+	      call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
+c        if (niter.eq.-1) then
+c          call takemolec(kk,infoonly,molinquire,indexanswer)
+c          return 
+c        endif
 c
 c try something different
-        if (.not.converge) then
-          pg=pgin
-          do i=10,1,-1
-            temtemp=tem*(1.+float(i)/20.)
-            print*,'did not converge at T=',tem,' trying ',temtemp
-            call die_pe(temtemp,pe,pg,found,converge,niter,skiprelim)
-          enddo
-        endif
-        call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
+c        if (.not.converge) then
+c          pg=pgin
+c          do i=10,1,-1
+c            temtemp=tem*(1.+float(i)/20.)
+c            print*,'did not converge at T=',tem,' trying ',temtemp
+c            call die_pe(temtemp,pe,pg,found,converge,niter,skiprelim)
+c          enddo
+c        endif
+c        call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
 c it really did not work
         if (.not.converge) then
           pgas=-1.0

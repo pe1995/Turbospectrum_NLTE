@@ -6,12 +6,14 @@ C REGULA-FALSI PROCEDURE IS USED ON THE LOG-LOG PG-PE RELATION.
 C 76.03.08  *NORD*
 C YOU FEED IT WITH T AND PG AND A GUESS PE. YOU GET PEX
 C
-      DATA IT,N,EPS/0,20,1.E-3/
+      DATA IT,N,EPS/0,20,1.E-5/
+      integer IO
+      IO=0
 C
 C START
 c guess input Pg to help jon
       FA=pg
-      CALL JON(T,PE,-1,FA,RO,E,0,1)
+      CALL JON(T,PE,-1,FA,RO,E,IO,1)
 
 C try to improve convergence
       pefirst=pe
@@ -19,7 +21,7 @@ C try to improve convergence
 c not converged in jon
         pe=pe/1.e1
         print*,'pemake, trying with lower Pe:',pe
-        CALL JON(T,PE,-1,FA,RO,E,0,1)
+        CALL JON(T,PE,-1,FA,RO,E,IO,1)
       enddo
       if (fa.lt.0.) pe=pefirst
       do while (fa.lt.0..and.pe.lt.1000.)
@@ -46,7 +48,7 @@ C******WRITE(7,40) T,PG,PE,FA
 C ONE PEMAKE ITERATION, CF. PEMAKE
 C input pg to help jon
       FB=FA*PEX/PE
-      CALL JON(T,PEX,1,FB,RO,E,0,1)
+      CALL JON(T,PEX,1,FB,RO,E,IO,1)
 C******WRITE(7,40) T,PG,PE,FB
       IT=IT+1
       FB=ALOG(FB/PG)

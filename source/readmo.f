@@ -87,7 +87,8 @@ ccc      READ(12,100) MCODE,NTAU,XLS
         DTAULN(K)=TAULN(K)-TAULN(K-1)
   11  CONTINUE
       if (mmm.lt.0) then
-        stop 'readmo : not found layer where tau is close to one '
+        radius=0.0
+c        stop 'readmo : not found layer where tau is close to one '
       else
         RADIUS=RR(mmm)
       endif

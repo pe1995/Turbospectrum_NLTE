@@ -218,6 +218,7 @@
       data nat/92/
       logical newformat,starkformat,nlteformat
       character oneline*256
+      real PEDUM
 
 ccc      external commn_handler
 
@@ -278,7 +279,7 @@ ccc      external commn_handler
       outfil=datoutfil
       mongofil=datmongofil
       limbdark=datlimbdark
-      multidump=datmultidump
+      multidump=.true.
       filterfil=datfilterfil
       overall=datoverall
       alpha=datalpha
@@ -712,6 +713,10 @@ c      call eqmol_pe(t(20),pg(20),pgpg,pe(20),
 c     &      1.,1.,k,niter,skiprelim)
 
 * Test Plez 11-May-2018
+C
+C as in babsma, first run it with something realistic
+      call eqmol_pe(4000.0,3.2e2,pgpg,PEDUM,1.,1.,ntau+1,niter,.false.)
+C
       do 43 k=ntau,1,-1
 *      do 43 k=1,ntau
 * end of test
@@ -733,6 +738,14 @@ ccc      write(*,'(i3,15e10.3,/,3x,15e10.3)') k,presmo
         PH(K)=presneutral(k,1)
         phe(k)=presneutral(k,2)
         ph2(k)=partryck(k,2)
+c
+c The molec. eq. did not converge for those
+        if (pgpg.eq.-1) then 
+          ph(k)  = 0.0
+          phe(k) = 0.0
+          ph2(k) = 0.0
+        endif
+C
 43    continue
       abundh=1./xmytsuji
       print*,'new abundh:',abundh
@@ -1710,14 +1723,19 @@ cc         CALL VOIGT(A(j),V,HVOIGT)
           filprint=linefil(i)
           write(46) '''* ',filprint(1:index(filprint,' ')),''''
         enddo
-        write(46) (ieliel,log10(absave(ieliel))+12.,ieliel=1,60),
-     &              (ieliel,log10(absave(ieliel))+12.,ieliel=62,83)
+ !        BPz 2022-09-27 : why not all abundances?
+ !
+ !        write(46) (ieliel,log10(absave(ieliel))+12.,ieliel=1,60),
+ !     &              (ieliel,log10(absave(ieliel))+12.,ieliel=62,83)
+
+         write(46) (log10(abund(ieliel))+12.,ieliel=1,92)
+
         write(46) ntau,maxlam,xl1,xl2,del
         write(46) xls
         write(46) (tau(k),k=1,ntau),(xi(k),k=1,ntau)
+        write(46) (ross(k),k=1,ntau)
         write(46) ((absocont(k,j)*ross(k),k=1,ntau),j=1,maxlam)
-        write(46) (((abso(k,j)-absocont(k,j))*ross(k),k=1,ntau),
-     &                                                  j=1,maxlam)
+        write(46) ((abso(k,j)*ross(k),k=1,ntau),j=1,maxlam)
         write(46) ((absos(k,j)*ross(k),k=1,ntau),j=1,maxlam)
       endif
       close(46)

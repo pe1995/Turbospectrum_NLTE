@@ -49,6 +49,11 @@
         return
       endif
 
+      if (t.gt.temp(ntemp)) then
+        propac=0.
+        return
+      endif
+
       if (omega.gt.omegalast) then
         iw=1
       endif

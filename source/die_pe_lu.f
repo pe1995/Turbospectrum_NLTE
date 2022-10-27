@@ -51,6 +51,7 @@ C
      &              f1,f2,f3,f4,f5,xkhm,xmh,xmy
         logical tsuswitch,tsuji,found(maxim)
         integer nattsuji,nmotsuji
+        integer niter_in
         doubleprecision parptsuji
         common /tsuji/ tsuji,tsuswitch,nattsuji,nmotsuji,
      &                 parptsuji(maxim+400)
@@ -64,6 +65,7 @@ C
 * this save statement may not be complete. I have not checked if anything else
 * needs saving.
 *
+      niter_in = niter
       konst=25947.172
 *konst=(2 pi amu / h^2)^1.5 * k^2.5
 *
@@ -322,6 +324,7 @@ C    RUSSELL EQUATIONS
           enddo
         enddo
         first=.false.
+c        if(niter_in.eq.-1) return
       endif
 *
 * Start of the Newton-Raphson iteration on the neutral atomic pressures

@@ -36,3 +36,10 @@ babsma_lu
 *.exe
 *.out
 *.app
+
+*.multi
+babsma_TSO*
+bsyn_TSO*
+babsma_TSO*
+dummy-output.dat
+ignoreSpectrum.txt

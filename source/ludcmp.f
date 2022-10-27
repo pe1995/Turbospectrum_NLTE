@@ -14,7 +14,7 @@
           if (abs(a(i,j)).gt.aamax) aamax=abs(a(i,j)) 
 11      continue 
         if (aamax.eq.0.) then
-          print*,'ludcmp fjac for i=',i,(a(i,j),j=1,n)
+          !print*,'ludcmp fjac for i=',i,(a(i,j),j=1,n)
           print*, 'singular matrix in ludcmp' 
           singular=.true.
           return

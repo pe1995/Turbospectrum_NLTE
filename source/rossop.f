@@ -18,7 +18,7 @@ cc      DATA NEWT/2/
 *
       newt=1
       CALL JON(T,PE,1,PG,RO,DUM,0,k)
-      CALL ABSKO(NEWT,1,T,PE,1,1,RSP,DUM)
+      CALL ABSKO(NEWT,1,T,PE,1,1,RSP,DUM,0)
 cc      NEWT=1
       ROSSOP=RSP+DUM
 *

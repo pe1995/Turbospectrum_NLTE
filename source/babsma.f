@@ -21,11 +21,12 @@
       DIMENSION TAU(NDP),PGL(NDP),XI(NDP),X(20*numbset),
      &          S(20*numbset),TAUS(NDP),taur(ndp)
       DIMENSION XLP(20*numbset),RHO(NDP),DUMDUM(NDP),RR(NDP),drr(ndp)
-      real dumdumm(ndp)
+      real dumdumm(ndp), dumpg, dumro
       real Teff,metallicity,kboltz,mh
       dimension rhobow(ndp),coldens(ndp),xe(ndp),ghoefner(ndp)
       dimension comparison(30),iidum(16),xlr(20)
-      real abskk(ndp),spridd(ndp),pgk(ndp)
+      real abskk(ndp),spridd(ndp),pgk(ndp),Eint(ndp)
+      real absk_ross, scat_ross, op_ross
       character*8 abname,source
       character*9 key
       character*1 bla
@@ -33,7 +34,7 @@
       dimension abname(mkomp),source(mkomp)
       LOGICAL MRXF,XIFIX
       character*50 blabla
-      CHARACTER*1024 DETOUT,OUTMOD,outmod2
+      CHARACTER*1024 DETOUT,OUTMOD,outmod2, outmod3
       CHARACTER*50 MOCODE,marcsformat
 *
 * from bsyn; this ensures that continuum opacities are computed for all
@@ -137,6 +138,10 @@ cc      data edge/ 912.00, 3647.98, 8209.26, 14591.99, 22800.22, 32923.98/ ! vac
 cc      data edge /912., 3647., 8207., 14588., 22794., 32915./
 cc* air edges from continuous opacity file.
       integer version
+      integer imodut3
+      integer i_pemake
+      integer,dimension(ndp):: skip_molecules
+      real :: DUMABSKK, DUMSPRIDD
       data version /201/
       data kboltz / 1.38065e-16 /
       data mh / 1.660e-24 /
@@ -148,6 +153,7 @@ cc* air edges from continuous opacity file.
       print*,'***********************'
       print*
 
+      skip_molecules=0
       massscale = .false.
       gravl=4.44
       intryc=0
@@ -181,6 +187,7 @@ c bsyn uses air wavelengths:
       IMOD=12
       IMODUT=13
       IMODUT2=42
+      IMODUT3=41
 *
       call input
 *
@@ -289,6 +296,7 @@ c              if (xlambda(j).gt.edge(k)) then
       detout=datdetout
       outmod=datinmod
       outmod2=outmod(1:lenstr(outmod))//'.mod'
+      outmod3=outmod(1:lenstr(outmod))//'.eos'
       tsuji=dattsuji
       mrxf=datmrxf
       xifix=datxifix
@@ -323,10 +331,13 @@ c              if (xlambda(j).gt.edge(k)) then
 * PRELIMINARY FILES ON UNIT 15 AND 16
 * MODEL READ FROM UNIT 12, NEW MODEL DATA WRITTEN ON UNIT 13
 *
+      print*,"Cont Abs. read from",datcontinopac
       OPEN(UNIT=IWRIT,FILE=DETOUT,STATUS='UNKNOWN')
       OPEN(UNIT=IREAT,FILE=datcontinopac,STATUS='OLD')
       OPEN(UNIT=IMODUT,FILE=OUTMOD,STATUS='UNKNOWN')
       OPEN(UNIT=IMODUT2,FILE=outmod2,STATUS='UNKNOWN')
+      OPEN(UNIT=IMODUT3,FILE=OUTMOD3,STATUS='UNKNOWN',
+     &          FORM="UNFORMATTED")
       OPEN(UNIT=ISLASK,STATUS='SCRATCH',FORM='UNFORMATTED')
       OPEN(UNIT=16,STATUS='SCRATCH',FORM='UNFORMATTED')
 ccc      OPEN(UNIT=34,FILE='pression.dat',STATUS='UNKNOWN')
@@ -564,6 +575,7 @@ cccc          print*,'reading ntau again ',ntau
      &             'MASS or TAU.'
             print*,'Other stuff may be added afterwards preceded by a',
      &             ' *'
+            goto 764
             stop 'error in  babsma.f'
           endif
         enddo
@@ -585,7 +597,7 @@ cccc          print*,'reading ntau again ',ntau
         goto 764
 761     stop 'COULD NOT READ MODEL ATMOSPHERE FILE !!!'
 764     continue
-
+        print*,'mocode ', mocode(1:7)
 ***********************************************
         if (mocode(1:3).eq.'sph') then
           do k=1,ntau
@@ -678,11 +690,20 @@ cc1963        format(i3,2x,6(e12.0))
           read(imod,*) Teff,gravl,metallicity,ntau
           do k=1,ntau
             read(imod,*) rr(k),T(k),rhobow(k)
-            pe(k)=1.e-10                                                  ! guess value only
-            pgl(k)=rhobow(k)*kboltz*t(k)/1.3/mh                           ! guess value only
+            pgl(k)=rhobow(k)*kboltz*t(k)/1.3/mh                    ! guess value only
+            pe(k)=1e-12                                            ! guess value only
+            xi(k)=0.0
+            if (T(k).gt.20000) skip_molecules(k) = -1
+c            if ((T(k).lt.1500).and.(log(rhobow(k)).gt.-17)) 
+c     &              skip_molecules(k) = -1
           enddo
+c          print*,'ntau ', ntau
+c          print*,'pe ', pe
+c          print*,'pgl ', pgl
+c          print*,' size pe', size(pe)
           intryc=0
           scale=0.
+          xls=5000.
 
 ***********************************************
         else if (mocode(1:7).eq.'Hoefner') then
@@ -876,6 +897,7 @@ c      print*,'injon done'
       ELSE
         WRITE(IMODUT,200) MOCODE(1:lenstr(mocode)),NTAU,XLS
         WRITE(IMODUT2,2000) MOCODE(1:lenstr(mocode)),NTAU,XLS
+        WRITE(IMODUT3) NTAU,XLS
         WRITE(IWRIT,300) MOCODE(1:lenstr(mocode)),NTAU,XLS
       ENDIF
       WRITE(IMODUT,203) NLQ
@@ -896,7 +918,7 @@ ccc      IF(NLQ.GT.NDP) STOP
 *  BPz 29/09-2021
       if (mocode(1:6).eq.'KURUCZ'.or.
      &      (mocode(1:5).eq.'MULTI'.and.massscale)) then
-        CALL ABSKO(NEWT,ntau,T,PE,1,1,ABSKK,SPRIDD)
+        CALL ABSKO(NEWT,ntau,T,PE,1,1,ABSKK,SPRIDD,0)
         do k=1,ntau
           kaprefmass(k)=ABSKk(k)+SPRIDd(k)
         enddo
@@ -934,7 +956,7 @@ cc          kapref(k) = kaprefmass(k)*rho(k)
               pe(k)=pe(k+1)*pgl(k)/pgl(k+1)
             endif
             call jon(t(k),pe(k),1,pg,ro,dum,io,k)
-            print888,t(k),pe(k),pg,pgl(k)
+            print 888,t(k),pe(k),pg,pgl(k)
 888         format('first jon call T, Pe, Pg Pgin ',f6.0,3(1x,1pe10.3))
 * must iterate on pe to get right pg in model.
 * try better guess input pe:
@@ -949,7 +971,17 @@ cc          kapref(k) = kaprefmass(k)*rho(k)
       endif
 
 * end of attempt
-
+C
+C call Jon one time with something realistic, so that every
+C routine in jon gets a first call with something that works
+      if (mocode(1:7).eq.'Stagger') then
+        call jon(4000.0,8.0e-3,1,DUMPG,DUMRO,DUM,0,NTAU+1)
+        NEWT=0
+        CALL ABSKO(NEWT,1,4000.0,8.0e-3,1,1,
+     &            DUMABSKK,DUMSPRIDD,0)
+        NEWT=1
+      endif
+C  
       DO 25 K=1,NTAU
         if (mrxf) then
 * guess input pg to help eqmol_pe.
@@ -976,11 +1008,12 @@ c      print*,'jon done'
 * for funny models, like miras
             if (k.ne.1) then
 * better guess of pe from previous depth point
-ccccc	      if (mocode.ne.'bowe'.or.mocode.ne.'BOWE') then
-              if (mocode(1:4).eq.'alva') then
-                pe(k)=pe(k-1)*pgl(k)/pgl(k-1)
-              else
-                pe(k)=pe(k-1)*rhobow(k)/rhobow(k-1)
+              if (mocode(1:7).ne.'Stagger') then
+                if (mocode(1:4).eq.'alva') then
+                  pe(k)=pe(k-1)*pgl(k)/pgl(k-1)
+                else
+                  pe(k)=pe(k-1)*rhobow(k)/rhobow(k-1)
+                endif
               endif
             endif
             iteration=0
@@ -988,8 +1021,10 @@ ccccc	      if (mocode.ne.'bowe'.or.mocode.ne.'BOWE') then
 C
 * guess input pg to help eqmol_pe.
             pg=pgl(k)
-c            print*,'babsma, call jon'
-            call jon(T(K),pe(k),-1,PG,RO,DUM,IO,k)
+c            print*,'babsma, call jon'   
+            print *,"k skip molecules",k,skip_molecules(k)     
+            call jon(T(K),pe(k),-1,PG,RO,DUM,
+     &       skip_molecules(k),k)
 c            print*,'return from jon, pg=',pg
 ccc unecessary ?
 C try to improve convergence
@@ -998,14 +1033,16 @@ C try to improve convergence
 c not converged in jon
               pe(k)=pe(k)/10.
               print*,'babsma, trying with lower Pe:',pe
-              call jon(T(K),pe(k),-1,PG,RO,DUM,IO,k)
+              call jon(T(K),pe(k),-1,PG,RO,DUM,
+     &       skip_molecules(k),k)
             enddo
             if (pg.lt.0.) pe(k)=pefirst
             do while (pg.lt.0..and.pe(k).lt.1000.)
 c not converged in jon
               pe(k)=pe(k)*10.
               print*,'babsma, trying with higher Pe:',pe
-              call jon(T(K),pe(k),-1,PG,RO,DUM,IO,k)
+              call jon(T(K),pe(k),-1,PG,RO,DUM,
+     &       skip_molecules(k),k)
             enddo
             if (pg.lt.0.) then
               print*,'giving up in babsma'
@@ -1019,15 +1056,37 @@ ccc
               ratiobow=rhobow(k)/ro
               print*,'rho_input/rho ',k,ratiobow
               pein=pe(k)
-              call pemakero(t(k),pein,rhobow(k),pe(k))
-              call jon(T(K),pe(k),1,PG,RO,DUM,IO,k)
+c              if (k.gt.10) pein=pe(k-10)
+c              print *, "pemakero input", t(k), pein, rhobow(k), pe(k)
+              call pemakero(t(k),pein,rhobow(k),pe(k),
+     &         skip_molecules(k))
+c              print *, "pemakero output", t(k), pein, rhobow(k), pe(k)
+              if (isnan(pe(k))) then
+                do i_pemake=1,12
+                print *, "NaN in Pe! We try by increasing guess Pe."
+                  pein = pein*10
+                  call pemakero(t(k),pein,rhobow(k),pe(k),
+     &             skip_molecules(k))
+                  print *, "pemakero: T, pein, pout", t(k),pein,pe(k)
+                  if (.not.(isnan(pe(k)))) exit
+                enddo
+              endif
+c
+c
+              call jon(T(K),pe(k),1,PG,RO,Eint(k),
+     &         skip_molecules(k),k)
+c
+c
               ratiobow=rhobow(k)/ro
               print*,'rho_input/rho ',k,ratiobow
               
               print*,'k  rho_input    ro_calc     pe     ',
      &              'pg_input   pg'
               print*,k,rhobow(k),ro,pe(k),pgl(k),pg
-
+c
+c Keep the input density, even though a different one is computed
+c              RO = rhobow(k)
+c
             else if (mocode(1:4).eq.'bowe'.or.
      &               mocode(1:4).eq.'BOWE') then
 c              ratiobow=rhobow(k)/ro*molweight/1.26
@@ -1037,7 +1096,7 @@ c              ratiobow=rhobow(k)/ro*molweight/1.26
               pe(k)=xe(k)*0.908*pgl(k)
 * for Bowen's new models (10/12-1996)
               pein=pe(k)
-              call pemakero(t(k),pein,rhobow(k),pe(k))
+              call pemakero(t(k),pein,rhobow(k),pe(k),0)
               CALL JON(T(K),pe(k),1,PG,RO,DUM,IO,k)
               ratiobow=rhobow(k)/ro
               print*,'rhobow/ro',k,ratiobow
@@ -1084,7 +1143,9 @@ ccc      write(34,'(i3,15e10.3,/,3x,15e10.3)') k,presmo
 * CALCULATED STANDARD OPaCITY
 *
 
-        CALL ABSKO(NEWT,1,T(K),PE(K),1,1,ABSK,SPRID)
+        CALL ABSKO(NEWT,1,T(K),PE(K),1,1,ABSK,
+     &       SPRID,skip_molecules(k))
+        print*, 'ABSKO', ABSK, SPRID, T(K), PE(K)
         STNDOP=ABSK+SPRID
         if (mocode(1:7).eq.'Hoefner') then
 *
@@ -1156,19 +1217,32 @@ c        print*,'check ro'
 * It can be injected in MARCS35 for a global OS spectrum run (newmod=8)
 *  BPz 14/11-2002
 *
+c                   (HIONPOT+EiExtra)/GRPH*EV_TO_ERG
+c          CALL ABSKO(NEWT,1,T(K),PE(K),1,0,absk_ross,scat_ross)
+c          print*, 'ABSKO - ross', absk_ross, scat_ross, T(K), PE(K)
+c          op_ross = absk_ross+scat_ross
+          Eint(k) = Eint(k)+
+     &        (13.595+5.0)/2.380491d-24*1.60218d-12
           write(imodut2,123) log10(tau(k)),T(k),log10(pe(k)),
      &                        log10(pg),xi(k),rr(k)
+          write(imodut3) log(T(k)),log(pe(k)),log(rhobow(k)),
+     &                        log(pg),log(Eint(k)),log(stndop)
 123       format(f8.4,1x,f8.1,2(1x,f8.4),1x,f5.2,1x,1pe15.8)
+124       format(6(G15.7, 1x))
         endif
 *******************************************************************
         if (hydrovelo) then
           WRITE(IMODUT,211) RR(K),TAU(K),T(K),PE(K),PG,RO,
+     &                      XI(K),STNDOP,velocity(k)
+          print*, 'OUTPUT', RR(K),TAU(K),T(K),PE(K),PG,RO,
      &                      XI(K),STNDOP,velocity(k)
           if (mocode(1:6).eq.'KURUCZ') then
             stop 'incompatible options: Kurucz and hydrovelo'
           endif
         else
           WRITE(IMODUT,201) RR(K),TAU(K),T(K),PE(K),PG,RO,
+     &                      XI(K),STNDOP
+          print*, 'OUTPUT', RR(K),TAU(K),T(K),PE(K),PG,RO,
      &                      XI(K),STNDOP
         endif
 *
@@ -1188,7 +1262,8 @@ c        print*,'check ro'
         DO 24 I=2,NSET
           NLP=NL(I)
           DO 23 J=1,NLP
-            CALL ABSKO(NEWT,1,T(K),PE(K),I,J,ABSK,SPRID)
+            CALL ABSKO(NEWT,1,T(K),PE(K),I,J,ABSK,SPRID,
+     &       skip_molecules(k))
             X(J0)=ABSK/STNDOP
             S(J0)=SPRID/STNDOP
             if (pureLTE) then
@@ -1228,7 +1303,7 @@ cc     &      log10(sngl(xiontryck(k,1))),
 cc     &      log10(sngl(partryck(k,6))),log10(sngl(partryck(k,8)))
 cc      enddo
 *
-
+      close(imodut3)
       close(imodut2)
       close(imodut)
       close(iwrit)

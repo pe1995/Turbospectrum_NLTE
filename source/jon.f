@@ -76,6 +76,9 @@ C
       common /density/ndensity,molweight,xmass,atmass
       real pgpgpg
       logical chck
+      logical fail_redo
+      real xmy_backup, enamn_backup
+      logical, save ::first=.true.
       data chck/.false./ ,pgpgpg/-1.0/
       data kkp/-1/
       data pep/-1.e10/
@@ -84,6 +87,8 @@ C
 C STATEMENT FUNCTION FOR 10.**
       EXP10(X)=EXP(2.302585*X)
 C
+      fail_redo = .false.
+  421  continue 
 *****************************************************************************************
 * Babsma, jon. PG is guess PG in input, replaced by computed Pg at return
 *
@@ -93,23 +98,23 @@ cc      print*,'jon, T, Pe, pgin = ',t,pe,pg
 *****************************************************************************************
       ITP=1
 C Is it the same T,pe point?
-      if (kk.eq.kkp) then
-       if ((abs((t-tp)/t).lt.1.e-8).and.(abs((pe-pep)/pe).lt.1.e-8)) 
-     &   then
+c      if (kk.eq.kkp) then
+c       if ((abs((t-tp)/t).lt.1.e-8).and.(abs((pe-pep)/pe).lt.1.e-8)) 
+c     &   then
 cc        print*,'CALLING jon with same T, P. ',
 cc     &      'Exiting jon without further calculations'
 cc        print*,' JON T=',T,' Pe=',pe,' kk=',kk,' Previous:',tp,pep,kkp
 * but first make sure we return correct values. The compiler, even
 * with -K, does not save variables in call statements.
-        ro=rosave
-        pg=pgsave
-        e=esave
-        return
-       endif
-      endif
+c        ro=rosave
+c        pg=pgsave
+c        e=esave
+c        return
+c       endif
+c      endif
 C
 C IS T=THE TEMPERATURE OF THE PRECEDING CALL ?
-      IF(ABS((T-TP)/T).LT.1.E-8)GO TO 53
+c      IF(ABS((T-TP)/T).LT.1.E-8)GO TO 53
    51 ITP=0
 C
 C SOME QUANTITIES, ONLY DEPENDENT ON T
@@ -264,7 +269,37 @@ C
 C        XKHM = THE 'DISSOCIATION CONSTANT' FOR H-.
 C
       HJONH=ANJON(1,2)/ANJON(1,1)
-      IF(T.GT.TMOLIM)GO TO 42
+c
+c      if (.not.fail_redo) then
+c          xmy_backup   = xmy
+c          enamn_backup = enamn
+c      else
+c          xmy   = xmy_backup
+c          enamn = enamn_backup 
+c          goto 42 
+c      endif
+c     
+c      if (first) then
+c          call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,-1,.true.)
+c          first=.false.
+c      endif
+      if (fail_redo) goto 42
+      IF(T.GT.TMOLIM)then
+        GO TO 42
+      endif
+C TMOLIM from TABGEN
+c These are situation when the molecular eq usually fails
+c      IF(T.GT.20000.0) then
+c          GO TO 42 
+c      endif
+      IF (IOUTR.eq.-1) then
+          GO TO 42 
+      endif
+c      IF((T.LT.1500.0).and.(log(RO).gt.-17)) then
+c          fail_redo = .true.
+c          GO TO 42 
+c      endif
+c      molh=merge(1,0,PE>1e7)
       IF(MOLH.LE.0) GOTO 45
 C
 C        FORMATION OF MOLECULES. ONLY H2 AND H2+
@@ -297,13 +332,14 @@ C        FORMATION OF MOLECULES COMPOSED OF H,C,N,O
 * is the T, P point close to previous one?
 
 *****      if ((abs((t-tp)/t).lt.1.e-1).and.(abs((pe-pep)/pe).lt.0.7)) 
-      if ((abs((t-tp)/t).lt.1.e-1).and.(abs((pe-pep)/pe).lt.1.0)) 
-     &    then
+c      if ((abs((t-tp)/t).lt.1.e-1).and.(abs((pe-pep)/pe).lt.1.0)) 
+c     &    then
 * try saving time in die_pe  BPz 08/07-1999
-        skiprelim=.true.
-      else
-        skiprelim=.false.
-      endif
+c        skiprelim=.true.
+c      else
+c        skiprelim=.false.
+c      endif
+      skiprelim=.false.
       call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,niter,skiprelim)
 
       if (pg.le.0.) then
@@ -311,10 +347,15 @@ C        FORMATION OF MOLECULES COMPOSED OF H,C,N,O
         print*,'  T=',t,' Pe=',pe
         if (iepro.gt.0) then
 * we stop on non-convergence condition
+          print*,'Jon: No convergence. Skipping molecules'
+          fail_redo = .true.
+c          IOUTR = -1
+          goto 421
           stop 'ERROR !!'
         else if (iepro.lt.0) then
 * we go back 
           print*,'jon: We try again with other initial guess values'
+          IOUTR = -1
           return
         else
           print*,'Jon, bad condition on iepro'
@@ -388,6 +429,8 @@ C        NO MOLECULES
       phydro=fsum*pe/fe
    43 PG=PE*(1.+(FSUM+SUMH)/FE)
       RO=PE*XMY*(XMH/XKBOL)/(FE*T)
+c      print *, "NO MOLEC: ", pg, ro, pe, fsum, sumh, fe, 
+c     &   xmy, xmh, xkbol, t
 ***** Partial pressures for T>TMOLIM
       HNIC=PE*F1/fe
       DO 31 I=1,30
@@ -396,7 +439,18 @@ C        NO MOLECULES
 ***** END
    46 continue
       XYRHO=RO
+c      if (fail_redo) then
+c          print*,"Failed Molec T,PE,PG,RO,EH,EJON,ENAMN", 
+c     &            T,PE,PG,RO,EH,EJON,ENAMN
+c      endif
       E=1.5*PG/RO+(EH+EJON)*ENAMN
+c indicate a failed run with NaN
+c E is not used in the remaining code, so bsyn runs should complete normally
+c In the post-process, you can then interpolate where E is NaN.
+      IF(fail_redo) then
+            E=0.0/0.0
+            print*,"Failed Molec. k,E",kk,E
+      endif
 ccc      print*,'jon pg/ro eh ejon ejontsuji e ',
 ccc     &       1.5*pg/ro,eh*enamn,ejon*enamn,ejontsuji*enamn,e
       YYPG=PG
@@ -415,7 +469,9 @@ C
       WRITE(IWRIT,203)IEL(I),ABUND(I),(ANJON(I,J),J=1,NJP)
       WRITE(IWRIT,207)(PART(I,J),J=1,NJP)
    93 CONTINUE
-      IF(T.GT.TMOLIM)GO TO 44
+      IF(fail_redo)GO TO 44
+c      IF(T.GT.TMOLIM)GO TO 44
+c      IF(T.GT.20000.0)GO TO 44
       IF(MOLH.LE.0)GOTO 47
       WRITE(IWRIT,205)F1P,F3P,F5P,F4P
       GO TO 71
