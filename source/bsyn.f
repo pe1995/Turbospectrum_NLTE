@@ -364,6 +364,7 @@ cc        open(47,file=outfil,status='unknown')
      &       status='unknown')
       else if (multidump) then
 * opacities (kappa cont, sigma cont and kappa line) for MULTI input.
+        print*, outfil(1:lenstr(outfil))//'.multi'
         open(46,file=outfil(1:lenstr(outfil))//'.multi',
      &        status='unknown',form='unformatted')
 CCCconvert='big_endian')
@@ -721,23 +722,28 @@ C
 *      do 43 k=1,ntau
 * end of test
 
-        if ((abs((t(k)-tp)/t(k)).lt.3.e-2).and.
-     &      (abs((pe(k)-pep)/pe(k)).lt.0.6)) then
-          skiprelim=.true.
-        else
+c        if ((abs((t(k)-tp)/t(k)).lt.3.e-2).and.
+c     &      (abs((pe(k)-pep)/pe(k)).lt.0.6)) then
+c          skiprelim=.true.
+c        else
           skiprelim=.false.
-        endif
+c        endif
+        print*,k
         tp=t(k)
         pep=pe(k)
-        call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
+        if (T(k).lt.1000000) then
+          call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
 c        print*,'eqmol_pe calculated ',niter,' iterations'
 c        print*,k,pg(k),pgpg,ro(k),rhotsuji
 
 ccc      write(*,'(i3,15e10.3,/,3x,15e10.3)') k,presmo
 *
-        PH(K)=presneutral(k,1)
-        phe(k)=presneutral(k,2)
-        ph2(k)=partryck(k,2)
+          PH(K)=presneutral(k,1)
+          phe(k)=presneutral(k,2)
+          ph2(k)=partryck(k,2)
+        else
+          pgpg = -1
+        endif
 c
 c The molec. eq. did not converge for those
         if (pgpg.eq.-1) then 
@@ -1719,6 +1725,7 @@ cc         CALL VOIGT(A(j),V,HVOIGT)
         write(46) '''*'''
 
         write(46) '''* ',inmod(1:index(inmod,' ')),''''
+        print *, "noffil..."
         do i=1,noffil
           filprint=linefil(i)
           write(46) '''* ',filprint(1:index(filprint,' ')),''''
@@ -1727,18 +1734,25 @@ cc         CALL VOIGT(A(j),V,HVOIGT)
  !
  !        write(46) (ieliel,log10(absave(ieliel))+12.,ieliel=1,60),
  !     &              (ieliel,log10(absave(ieliel))+12.,ieliel=62,83)
-
-         write(46) (log10(abund(ieliel))+12.,ieliel=1,92)
-
+        print *, "abund..."
+        write(46) (log10(abund(ieliel))+12.,ieliel=1,92)
+        print *, "header..."
         write(46) ntau,maxlam,xl1,xl2,del
+        print *, "xls..."
         write(46) xls
+        print *, "tau..."
         write(46) (tau(k),k=1,ntau),(xi(k),k=1,ntau)
+        print *, "ross..."
         write(46) (ross(k),k=1,ntau)
+        print *, "absocont..."
         write(46) ((absocont(k,j)*ross(k),k=1,ntau),j=1,maxlam)
+        print *, "abso..."
         write(46) ((abso(k,j)*ross(k),k=1,ntau),j=1,maxlam)
+        print *, "absos..."
         write(46) ((absos(k,j)*ross(k),k=1,ntau),j=1,maxlam)
       endif
       close(46)
+      print *, "File written."
 *
 *
   100 FORMAT(4X,I1,6X,I3)
@@ -1776,4 +1790,4 @@ cc         CALL VOIGT(A(j),V,HVOIGT)
      & ' IMY=',I1,' MA=',F6.2,' ABUND=',F4.2,' CHI=',F5.2,' XITE=',
      & 1PE9.2)
 *
-      END
+      END PROGRAM BSYN

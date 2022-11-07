@@ -693,7 +693,7 @@ cc1963        format(i3,2x,6(e12.0))
             pgl(k)=rhobow(k)*kboltz*t(k)/1.3/mh                    ! guess value only
             pe(k)=1e-12                                            ! guess value only
             xi(k)=0.0
-            if (T(k).gt.20000) skip_molecules(k) = -1
+            if (T(k).gt.1000000) skip_molecules(k) = -1
 c            if ((T(k).lt.1500).and.(log(rhobow(k)).gt.-17)) 
 c     &              skip_molecules(k) = -1
           enddo
