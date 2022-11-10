@@ -731,7 +731,7 @@ c        endif
         print*,k
         tp=t(k)
         pep=pe(k)
-c        if (T(k).lt.1000000) then
+c        if (T(k).lt.1000000.0) then
           call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
 c        print*,'eqmol_pe calculated ',niter,' iterations'
 c        print*,k,pg(k),pgpg,ro(k),rhotsuji
