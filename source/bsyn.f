@@ -731,7 +731,7 @@ c        endif
         print*,k
         tp=t(k)
         pep=pe(k)
-        if (T(k).lt.1000000) then
+c        if (T(k).lt.1000000) then
           call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
 c        print*,'eqmol_pe calculated ',niter,' iterations'
 c        print*,k,pg(k),pgpg,ro(k),rhotsuji
@@ -741,9 +741,9 @@ ccc      write(*,'(i3,15e10.3,/,3x,15e10.3)') k,presmo
           PH(K)=presneutral(k,1)
           phe(k)=presneutral(k,2)
           ph2(k)=partryck(k,2)
-        else
-          pgpg = -1
-        endif
+c        else
+c          pgpg = -1
+c        endif
 c
 c The molec. eq. did not converge for those
         if (pgpg.eq.-1) then 
