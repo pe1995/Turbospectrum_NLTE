@@ -56,6 +56,9 @@ C
         common /tsuji/ tsuji,tsuswitch,nattsuji,nmotsuji,
      &                 parptsuji(maxim+400)
         common/funco/ kpe,dfdp,pe,elmolec,molions
+c        integer ielem,ion
+c        real tmolim,molh
+c        COMMON/CI4/ IELEM(16),ION(16,5),TMOLIM,MOLH
         data epsp /0.05/
 * epsp is the convergence criterium for a rough equilibrium, without Pe
 * being checked. It only insures that the individual atomic pressures 
@@ -462,7 +465,10 @@ cc        print*,'Pe, pg ' ,fp(99),pg
         fminold=fmin
 
 ***************************************************
-
+        if (tem.gt.20000) then
+          converge=.false.
+          return
+        endif
         call ludcmp(fjac,nmetal,100,indx,dd,singular)
         if (singular) then
           converge=.false.
