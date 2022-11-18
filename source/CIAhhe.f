@@ -49,11 +49,6 @@
         return
       endif
 
-      if (t.gt.temp(ntemp)) then
-        propac=0.
-        return
-      endif
-
       if (omega.gt.omegalast) then
         iw=1
       endif
@@ -73,6 +68,10 @@
       enddo
       it=min(it,ntemp-1)
       qt=(t-temp(it))/(temp(it+1)-temp(it))
+      if (t.gt.temp(ntemp)) then
+        propac=hheop(ntemp)
+        return
+      endif
       propac=qt*log(hheop(it+1))+(1.-qt)*log(hheop(it))
       if(propac.gt.-70) then
         propac=exp(propac)

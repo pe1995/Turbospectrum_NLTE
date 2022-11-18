@@ -124,11 +124,11 @@
 
       logical dattsuji,datspherical,datlimbdark,databfind,abfind,
      &        datmultidump,datxifix,datmrxf,dathydrovelo,datpureLTE,
-     &        datnlte,nlte,purelte
+     &        datnlte,nlte,purelte,datdepartbin
       integer datnoffil,datncore,datmaxfil,datmihal,datiint
       real    isoch(1000),isochfact(1000),datisoch(1000),
      &        datisochfact(1000)
-      real    datxmyc,datscattfrac
+      real    datxmyc,datscattfrac,dattmolim_in
       character*128 datfilmet,datfilmol,datfilwavel
       character*256 datlinefil(maxfil),datdetout,
      &          datinatom,datinmod,datinabun,datcontinopac,datinpmod,
@@ -157,9 +157,9 @@
      &                 datresolution,
      &                 datiint,datxmyc,datscattfrac,
      &                 datpureLTE,datnlte,
-     &                 datmodelatomfile,datdeparturefile,
+     &                 datmodelatomfile,datdeparturefile,datdepartbin,
      &                 datcontmaskfile,datlinemaskfile,datsegmentsfile,
-     &                 datnlteinfofile
+     &                 datnlteinfofile,dattmolim_in
 
       real amass(92,0:250),abund(92),fixabund(92),
      &         isotopfrac(92,0:250)
@@ -530,7 +530,7 @@ cc      READ(27,109) XLBOFF
         endif
         tp=t(k)
         pep=pe(k)
-        call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
+        call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim,0)
 c        print*,'eqmol_pe calculated ',niter,' iterations'
 c        print*,k,pg(k),pgpg,ro(k),rhotsuji
 

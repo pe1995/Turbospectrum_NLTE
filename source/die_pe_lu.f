@@ -1,4 +1,5 @@
-      SUBROUTINE DIE_pe(TEM,SPE,spg,found,converge,niter,skiprelim)
+      SUBROUTINE DIE_pe(TEM,SPE,spg,found,converge,niter,skiprelim,
+     &                  ioutr)
 
 C DIE_pe SUBROUTINE DE EQMOL_pe
 C 
@@ -8,7 +9,7 @@ C
 C 28/08-1996 BPz
 C
         implicit none
-
+        integer ioutr
         integer maxim
         parameter (maxim=1000)
         integer i,j,m,mmax(maxim),mmaxj,natom(5,maxim),nelem(5,maxim),
@@ -56,6 +57,9 @@ C
         common /tsuji/ tsuji,tsuswitch,nattsuji,nmotsuji,
      &                 parptsuji(maxim+400)
         common/funco/ kpe,dfdp,pe,elmolec,molions
+        integer ielem_b,ion_b
+        real tmolim,molh_b
+        COMMON/CI4/ IELEM_b(16),ION_b(16,5),TMOLIM,MOLH_b
 c        integer ielem,ion
 c        real tmolim,molh
 c        COMMON/CI4/ IELEM(16),ION(16,5),TMOLIM,MOLH
@@ -465,7 +469,9 @@ cc        print*,'Pe, pg ' ,fp(99),pg
         fminold=fmin
 
 ***************************************************
-        if (tem.gt.20000.0) then
+        if ((tem.gt.tmolim) .and. (ioutr.ne.3)) then
+          print *,'die_pe: Skipping because of TMOLIM',
+     &                     tem,ioutr
           converge=.false.
           return
         endif

@@ -389,20 +389,36 @@ C        ABSORPTION
       SUMABS=0.
 C        H I
       DO 12 KOMP=2,16
+        if(isnan(AB(komp))) then
+            print*,'absko: komp (H) is nan',komp
+            AB(KOMP) = 0.0
+        endif
         SUMABS=SUMABS+AB(KOMP)
    12 CONTINUE
 c      print*, 'detabs sumabs HI 1', sumabs
+        if(isnan(AB(18))) then
+            print*,'absko: komp (H) is nan',18
+            AB(18) = 0.0
+        endif
       sumabs=sumabs+ab(18)
       SUMABS=(SUMABS+HREST(NTP))*XLA3(JP)
       PROV(2)=SUMABS
 c      print*, 'detabs sumabs HI 2', sumabs
 C        H-
+        if(isnan(AB(19))) then
+            print*,'absko: komp (H) is nan',19
+            AB(19) = 0.0
+        endif
       HMIN=AB(1)+AB(19)/STIM
       SUMABS=SUMABS+HMIN
       PROV(1)=HMIN
 c      print*, 'detabs sumabs H-', sumabs
 C Fe I bf     NEW: OP data from DK 98-08-23 revised later. Still needs revision 
 C   (smoothing resonance and not remove them) BPz 19/09-2007
+        if(isnan(AB(17))) then
+            print*,'absko: komp (H) is nan',17
+            AB(17) = 0.0
+        endif
       SUMABS=SUMABS+AB(17)
 c      print*, 'detabs sumabs FeI', sumabs
       PROV(3)=AB(17)
@@ -436,6 +452,10 @@ c Me I ff (the remaining metals)
       AB(52)=AB(52)*LAMBDA3
 C 
       DO 13 KOMP=20,NKOMP
+        if(isnan(AB(komp))) then
+            print*,'absko: komp is nan',komp
+            AB(KOMP) = 0.0
+        endif
         SUMABS=SUMABS+AB(KOMP)
         PROV(KOMP-16)=AB(KOMP)
    13 CONTINUE
@@ -453,6 +473,7 @@ C        ANALYTICAL EXPRESSIONS, MAY BE ADDED.
 * from old detabs (C-stars) H2-H2 and H2-He pressure induced opacity
 * 16/01-1996: Aleksandra Borysow me signale que stim deja inclu dans CIA.
       OMEGA=1./XLA(JP)*1.E+8
+c
       if (borysow) then
 cc        call h2borysowopac(omega,t(ntp),propac)
         call CIAh2h2(omega,t(ntp),propac)
@@ -460,7 +481,11 @@ cc        call h2borysowopac(omega,t(ntp),propac)
         CALL H2OPAC(OMEGA,T(NTP),PROPAC)
       endif
       H2PRES=PROPAC*PHTVA(NTP)/stim
+      if (isnan(H2PRES)) then
+            H2PRES=0.0
+      endif
       PROV(NPROVA-3)=H2PRES
+c
       if (borysow) then
 cc        call heborysowopac(omega,t(ntp),propac)
         call CIAh2he(omega,t(ntp),propac)
@@ -468,40 +493,35 @@ cc        call heborysowopac(omega,t(ntp),propac)
         CALL HEOPAC(OMEGA,T(NTP),PROPAC)
       endif
       HEPRES=PROPAC*PHEL(NTP)/stim
+      if (isnan(HEPRES)) then
+            HEPRES=0.0
+      endif
 c      print *, 'PROPAC PHEL stim',PROPAC,PHEL(NTP),stim
       PROV(NPROVA-2)=HEPRES
+c
       if(borysow) then
         call CIAh2h(omega,t(ntp),propac)
       else
         stop '1 in detabs'
       endif
       h2hpres=propac*ph2h(ntp)/stim
+      if (isnan(h2hpres)) then
+            h2hpres=0.0
+      endif
       prov(nprova-1)=h2hpres
+c      
       if(borysow) then
         call CIAhhe(omega,t(ntp),propac)
       else
         stop '2 in detabs'
       endif
       hhepres=propac*phhe(ntp)/stim
-      prov(nprova)=hhepres
-*
-      if (isnan(H2PRES))  then
-            print*,'NaN in H2PRES'
-            H2PRES=0.0
-      endif
-      if (isnan(HEPRES))  then
-            print*,'NaN in HEPRES'
-            HEPRES=0.0
-      endif
-      if (isnan(h2hpres)) then
-            print*,'NaN in h2hpres'
-            h2hpres=0.0
-      endif
       if (isnan(hhepres)) then
-            print*,'NaN in hhepres'
             hhepres=0.0
       endif
-c
+      prov(nprova)=hhepres
+*
+c      if (isnan(sumabs)) print*,'already is nan'
       SUMABS=SUMABS+H2PRES+HEPRES+h2hpres+hhepres
       SUMABS=SUMABS*STIM
 c      print*,'detabs H2PRES,HEPRES,h2hpres,hhepres',

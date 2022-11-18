@@ -18,6 +18,7 @@
      &        hydrovelo,pureLTE,departbin,nlte
       integer iint,k
       real    isoch(1000),isochfact(1000),xic,xmyc,scattfrac
+      real    tmolim_in
       doubleprecision xl1,xl2,del,xlmarg,xlboff,resolution
       common/inputdata/mmaxfil,tsuji,filmet,filmol,noffil,
      &                 linefil(maxfil),spherical,mihal,taum,ncore,
@@ -32,7 +33,7 @@
      &                 iint,xmyc,scattfrac,
      &                 pureLTE,nlte,modelatomfile,departurefile,
      &                 departbin,contmaskfile,linemaskfile,
-     &                 segmentsfile,nlteinfofile
+     &                 segmentsfile,nlteinfofile,tmolim_in
 
       common/species/atominclude
       data atominclude 
@@ -57,6 +58,7 @@
       scattfrac=0.0
       pureLTE=.false.
       departbin=.true.
+      tmolim_in=100000000.0
       do k=1,100
         abch(k)=-99.9
       enddo
@@ -236,6 +238,8 @@ ccc        read(iread,*) filterfil
         read(charvalue,*) xl2
       else if (keyword(1:11).eq.'LAMBDA_STEP') then
         read(charvalue,*) del
+      else if (keyword(1:6).eq.'TMOLIM') then
+        read(charvalue,*) tmolim_in
       else if (keyword(1:14).eq.'INTENSITY/FLUX') then
         read(charvalue,*) answer
         if (answer(1:1).eq.'I') then
@@ -286,6 +290,8 @@ cc      enddo
       do i=1,10
         print*, (atominclude((i-1)*10+jj),' ',jj=1,10)
       enddo
+
+      print*, "tmolim input",tmolim_in
 
 
 10    format (a)

@@ -79,6 +79,32 @@ C
       logical fail_redo
       real xmy_backup, enamn_backup
       logical, save ::first=.true.
+
+      real xev
+c
+c Stuff for part. function
+c
+        integer mmax(maxim),natom(5,maxim),nelem(5,maxim),
+     &          nelemx(100),nmetal,nimax,NELEMI,NMOL_e,NMOL
+        character*20   MOL(maxim)
+* really real, not supposed to become doubleprecision
+        real g0(100),g1(100),g2(100),g3(100),exponent(maxim),partp
+* may become dbleprec
+        doubleprecision IP_e(100),KP(100),uiidui(100),eps,fp(100),
+     &       ppmol(maxim),apm(maxim),c(maxim,5),ccomp(100),p(100),
+     &       econst,exp10,x,ppk(30),ipp(100),ippp(100),d00(maxim),
+     &       qmol(maxim),reducedmass15(maxim)
+        character*20 molcode(maxim)
+        logical switer
+        COMMON/COMFH1/C,NELEM,NATOM,MMAX,PPMOL,d00,qmol,
+     &                APM,MOL,IP_e,ipp,ippp,g0,g1,g2,g3,
+     &                CCOMP,exponent,reducedmass15,
+     &                UIIDUI,P,FP,KP,eps,NELEMX,
+     &                NIMAX,NMETAL,NMOL_e,switer,molcode,elem
+c
+c
+c
+c
       data chck/.false./ ,pgpgpg/-1.0/
       data kkp/-1/
       data pep/-1.e10/
@@ -143,6 +169,8 @@ C        PFISH= P(FISCHEL AND SPARKS, ASTROPHYS. J. 164, 359 (1971)) IS USED IN
 C        FUNCTION QAS.
 C
    53 DXI=4.98E-4*TETA*SQRT(PE)
+c      if (dxi.gt.0.747*0.5) print*, 'jon: dxi .gt. 0.747*0.5'
+      dxi=min(dxi,0.747*0.5)
       DUM=TETA25/PE
       DIM=EXP10(DXI*TETA)
       PFAK(1)=DIM*DUM
@@ -205,12 +233,36 @@ C
 C        THE PARTITION FUNCTION IS CONSTANT
    14 PARTP=PARCO(JA)
    15 PART(I,J)=PARTP
+c
+c
+        if ((.not.first) .and. 
+     &          ( (T>TMOLIM.and.(IOUTR.ne.3))
+     &                     .or.
+     &           (fail_redo.or.(IOUTR.eq.-1)) )) then
+c     
+            NELEMI = NELEMX(I)
+c
+c            if ((T.gt.21500) .and. (T.lt.21600)) print *,
+c     &       'T,pe,NELEMI,j,ja',T,pe,NELEMI,i,j,ja
+* calculation of the partition functions following Irwin (1981)
+c            if ((T.gt.21500) .and. (T.lt.21600)) print *,
+c     &       'part (before)',PARTP
+c            
+            call partf(nelemi,j,t,1,PARTP,ip_e(nelemi))
+c            
+c            if ((T.gt.21500) .and. (T.lt.21600)) print *,
+c     &       'part (after)',PARTP
+c            
+            PART(I,J) = PARTP
+      endif
 C
 C        IONIZATION EQUILIBRIA AND TOTAL NUMBER OF ELECTRONS
 C
       IF(J.LE.1)GO TO 19
       IF(ITP.GT.0)GO TO 17
       RFAK(JA)=EXP10(-XIONG(I,JM1)*TETA)
+c      if (partp.gt.1000.) print*, 'jon: partp.gt.1000.'
+      partp=min(1000.,partp)
    17 F(JM1)=PFAK(JM1)*RFAK(JA)*PARTP/PART(I,J-1)
       GO TO 19
    18 IF(J.GT.1)F(JM1)=0.
@@ -240,12 +292,15 @@ C        COMPUTATION OF THE ENERGY OF IONIZATION (EJON). HYDROGEN IS NOT
 C        INCLUDED.
 C
       XERG=0.
+c      xev=0.
 C        XERG= THE ENERGY OF IONIZATION PER ATOM (IN ELECTRON VOLTS)
 C
       DO22 J=2,NJP
       JM1=J-1
       FLJM1=JM1
    22 XERG=ANJON(I,J)*(XIONG(I,JM1)-DXI*FLJM1)+XERG
+c      xev=xev+(xiong(i,jm1)-dxi*fljm1)
+c   22 xerg=xerg+anjon(i,j)*xev
       EJON=XERG*ABUND(I)+EJON
       GO TO 24
    23 JA=JA+NJP
@@ -283,8 +338,13 @@ c      if (first) then
 c          call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,-1,.true.)
 c          first=.false.
 c      endif
+c      if ((T.gt.21500) .and. (T.lt.21600)) print *,
+c     &       'anjon(1,1),anjon(1,2)',anjon(1,1),anjon(1,2)
       if (fail_redo) goto 42
-      IF(T.GT.TMOLIM)then
+      if ((T.gt.21500) .and. (T.lt.21600)) then
+          print*,'t,pe,ro,anjon (before)',t,pe,anjon(1,1),anjon(1,2)
+      endif
+      IF((T.GT.TMOLIM) .and. (IOUTR.ne.3))then
         GO TO 42
       endif
 C TMOLIM from TABGEN
@@ -293,6 +353,7 @@ c      IF(T.GT.20000.0) then
 c          GO TO 42 
 c      endif
       IF (IOUTR.eq.-1) then
+            fail_redo = .true.
           GO TO 42 
       endif
 c      IF((T.LT.1500.0).and.(log(RO).gt.-17)) then
@@ -340,22 +401,24 @@ c      else
 c        skiprelim=.false.
 c      endif
       skiprelim=.false.
-      call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,niter,skiprelim)
-
+      call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,niter,
+     &                skiprelim,ioutr)
+      first = .false.
       if (pg.le.0.) then
         print*,' Jon: eqmol not converged after ',niter,' iterations!'
         print*,'  T=',t,' Pe=',pe
         if (iepro.gt.0) then
 * we stop on non-convergence condition
-          print*,'Jon: No convergence. Skipping molecules'
+c          print*,'Jon: No convergence. Skipping molecules'
           fail_redo = .true.
 c          IOUTR = -1
           goto 421
+c          goto 421
           stop 'ERROR !!'
         else if (iepro.lt.0) then
 * we go back 
           print*,'jon: We try again with other initial guess values'
-          IOUTR = -1
+c          IOUTR = -1
           return
         else
           print*,'Jon, bad condition on iepro'
@@ -409,6 +472,9 @@ CCCC      PG=PE+SUMPMO+SUMPA+SUMPI+PE*SUMM/FE
       pgpgpg=pg
       phydro=hnic/f1
       ro=rho
+      if ((T.gt.21500) .and. (T.lt.21600)) then
+          print*,'t,pe,ro,anjon (after)',t,pe,ro,anjon(1,1),anjon(1,2)
+      endif
 *
 ccc      print*,'jon, T,Pe: ',t,pe
 ccc      print*,'jon: old ejon:',ejon
@@ -426,9 +492,13 @@ C        NO MOLECULES
       F5=0.
       FSUM=1.
       EH=-XIH*F1
+      xmy=xmytsuji
       phydro=fsum*pe/fe
    43 PG=PE*(1.+(FSUM+SUMH)/FE)
       RO=PE*XMY*(XMH/XKBOL)/(FE*T)
+      if ((T.gt.21500) .and. (T.lt.21600)) then
+          print*,'t,pe,ro,anjon (after)',t,pe,XMY,XMH,XKBOL,FE
+      endif
 c      print *, "NO MOLEC: ", pg, ro, pe, fsum, sumh, fe, 
 c     &   xmy, xmh, xkbol, t
 ***** Partial pressures for T>TMOLIM

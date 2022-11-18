@@ -1,5 +1,5 @@
 C
-      SUBROUTINE PEMAKEro(T,PE,ro,PEX,io)
+      SUBROUTINE PEMAKEro(T,PE,ro,PEX,io,kk)
 C
 C based on pemake but iterating on ro
 C YOU FEED IT WITH T AND ro AND A GUESS PE. YOU GET PEX
@@ -7,10 +7,15 @@ C
       DATA IT,N,EPS/0,30,1.0e-5/
       integer IO
 C
+c Call jon with: IO=0     -> dont skip molecules
+c                IO=-1    -> Skip molecules from the start
+c                IEPRO=1  -> If molec fail, restart, turn them off and set E to NaN
+c                IEPRO=-1 -> if molecules fail, just return   
 C START
       A=ALOG(PE)
       PEX=PE
-      CALL JON(T,PE,1,pg,fa,E,IO,1)
+      io=0
+      CALL JON(T,PE,1,pg,fa,E,IO,kk)
 C******WRITE(7,40) T,ro,PE,FA
 40    FORMAT(' T,ro,PE,rop=',4E11.4)
       IT=IT+1
@@ -19,7 +24,8 @@ C******WRITE(7,40) T,ro,PE,FA
       B=A-0.69*FA
       PEX=EXP(B)
 C ONE PEMAKE ITERATION, CF. PEMAKE
-      CALL JON(T,PEX,1,pg,fb,E,IO,1)
+      io=0
+      CALL JON(T,PEX,1,pg,fb,E,IO,kk)
 C******WRITE(7,40) T,ro,PE,FB
       IT=IT+1
       FB=ALOG(FB/ro)
@@ -39,7 +45,8 @@ C INTERPOLATE TO FIND NEW X
       PEX=EXP(X)
       IF(ABS(X-XOLD).LT.EPS) GOTO 101
       if (isnan(PEX)) return
-      CALL JON(T,PEX,1,pg,fx,E,IO,1)
+      io=0
+      CALL JON(T,PEX,1,pg,fx,E,IO,kk)
 C******WRITE(7,40) T,ro,PEX,FX
       IT=IT+1
       FX=ALOG(FX/ro)

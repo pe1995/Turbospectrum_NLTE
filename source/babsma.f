@@ -96,9 +96,9 @@ cc     & absos(ndp,lpoint),absocont(ndp,lpoint),absoscont(ndp,lpoint)
      &              datnlteinfofile
       logical dattsuji,datspherical,datlimbdark,databfind,
      &        datmultidump,datxifix,datmrxf,dathydrovelo,
-     &        datpureLTE,pureLTE,datnlte,nlte
+     &        datpureLTE,pureLTE,datnlte,nlte,datdepartbin
       integer datiint
-      real    datisoch(1000),datisochfact(1000),datxmyc
+      real    datisoch(1000),datisochfact(1000),datxmyc,dattmolim_in
       doubleprecision  datxl1,datxl2,datdel,datxlmarg,datxlboff,
      &                 datresolution
       common/inputdata/datmmaxfil,dattsuji,datfilmet,datfilmol,
@@ -115,9 +115,9 @@ cc     & absos(ndp,lpoint),absocont(ndp,lpoint),absoscont(ndp,lpoint)
      &                 datresolution,
      &                 datiint,datxmyc,datscattfrac,
      &                 datpureLTE,datnlte,
-     &                 datmodelatomfile,datdeparturefile,
+     &                 datmodelatomfile,datdeparturefile,datdepartbin,
      &                 datcontmaskfile,datlinemaskfile,datsegmentsfile,
-     &                 datnlteinfofile
+     &                 datnlteinfofile,dattmolim_in
 *
       real amass(92,0:250),abund(92),fixabund(92),
      &         isotopfrac(92,0:250)
@@ -130,6 +130,12 @@ cc     & absos(ndp,lpoint),absocont(ndp,lpoint),absoscont(ndp,lpoint)
       logical massscale
       real velocity
       common/velo/velocity(ndp),hydrovelo
+
+      integer dumio
+
+      integer ielem,ion
+      real tmolim,molh
+      COMMON/CI4/ IELEM(16),ION(16,5),TMOLIM,MOLH
 
       real*8 vacair
       real*8 edge(6)
@@ -154,6 +160,7 @@ cc* air edges from continuous opacity file.
       print*
 
       skip_molecules=0
+      dumio = 0
       massscale = .false.
       gravl=4.44
       intryc=0
@@ -190,6 +197,7 @@ c bsyn uses air wavelengths:
       IMODUT3=41
 *
       call input
+      print *, "tmolim babsma", dattmolim_in
 *
 * XL content:
 * 20*(numbset-1) wavelengths allowed.
@@ -692,7 +700,15 @@ cc1963        format(i3,2x,6(e12.0))
             read(imod,*) rr(k),T(k),rhobow(k)
             pgl(k)=rhobow(k)*kboltz*t(k)/1.3/mh                    ! guess value only
             pe(k)=1e-12                                            ! guess value only
+c            if (t(k).ge.1.0d4) then                               ! H fully ionized
+c              pe(k)= rhobow(k)/2.380491d-24*
+c     &         kboltz*t(k)
+c            else                                                   ! H fully neutral, electrons from metals
+c              pe(k)= 1e-4*rhobow(k)/2.380491d-24*
+c     &         kboltz*t(k)
+c            end if
             xi(k)=0.0
+            velocity(k)=0.0
 c            if (T(k).gt.1000000) skip_molecules(k) = -1
 c            if ((T(k).lt.1500).and.(log(rhobow(k)).gt.-17)) 
 c     &              skip_molecules(k) = -1
@@ -850,6 +866,9 @@ c          print*,' size pe', size(pe)
 *
       IO=0
       CALL INJON(IO,MRXF)
+      TMOLIM=dattmolim_in
+      print *, "tmolim_in",dattmolim_in
+      print *, "TMOLIM", TMOLIM
 **********
 c      print*,'injon done'
 **********
@@ -975,10 +994,12 @@ C
 C call Jon one time with something realistic, so that every
 C routine in jon gets a first call with something that works
       if (mocode(1:7).eq.'Stagger') then
-        call jon(4000.0,8.0e-3,1,DUMPG,DUMRO,DUM,0,NTAU+1)
+        dumio = 3
+        call jon(4000.0,8.0e-3,1,DUMPG,DUMRO,DUM,DUMIO,NTAU+1)
         NEWT=0
+        dumio = 3
         CALL ABSKO(NEWT,1,4000.0,8.0e-3,1,1,
-     &            DUMABSKK,DUMSPRIDD,0)
+     &            DUMABSKK,DUMSPRIDD,dumio)
         NEWT=1
       endif
 C  
@@ -1021,10 +1042,10 @@ c      print*,'jon done'
 C
 * guess input pg to help eqmol_pe.
             pg=pgl(k)
-c            print*,'babsma, call jon'   
-            print *,"k skip molecules",k,skip_molecules(k)     
+            dumio = 0
+c            print*,'babsma, call jon'       
             call jon(T(K),pe(k),-1,PG,RO,DUM,
-     &       skip_molecules(k),k)
+     &            dumio,k)
 c            print*,'return from jon, pg=',pg
 ccc unecessary ?
 C try to improve convergence
@@ -1034,7 +1055,7 @@ c not converged in jon
               pe(k)=pe(k)/10.
               print*,'babsma, trying with lower Pe:',pe
               call jon(T(K),pe(k),-1,PG,RO,DUM,
-     &       skip_molecules(k),k)
+     &       dumio,k)
             enddo
             if (pg.lt.0.) pe(k)=pefirst
             do while (pg.lt.0..and.pe(k).lt.1000.)
@@ -1042,7 +1063,7 @@ c not converged in jon
               pe(k)=pe(k)*10.
               print*,'babsma, trying with higher Pe:',pe
               call jon(T(K),pe(k),-1,PG,RO,DUM,
-     &       skip_molecules(k),k)
+     &       dumio,k)
             enddo
             if (pg.lt.0.) then
               print*,'giving up in babsma'
@@ -1053,20 +1074,21 @@ ccc
 * pgl/ro==kT/muamu 
             if (mocode(1:7).eq.'Hoefner'.or.
      &          mocode(1:7).eq.'Stagger') then
+              dumio = 0
               ratiobow=rhobow(k)/ro
               print*,'rho_input/rho ',k,ratiobow
               pein=pe(k)
 c              if (k.gt.10) pein=pe(k-10)
 c              print *, "pemakero input", t(k), pein, rhobow(k), pe(k)
               call pemakero(t(k),pein,rhobow(k),pe(k),
-     &         skip_molecules(k))
+     &         dumio,k)
 c              print *, "pemakero output", t(k), pein, rhobow(k), pe(k)
               if (isnan(pe(k))) then
                 do i_pemake=1,12
                 print *, "NaN in Pe! We try by increasing guess Pe."
                   pein = pein*10
                   call pemakero(t(k),pein,rhobow(k),pe(k),
-     &             skip_molecules(k))
+     &             dumio,k)
                   print *, "pemakero: T, pein, pout", t(k),pein,pe(k)
                   if (.not.(isnan(pe(k)))) exit
                 enddo

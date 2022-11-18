@@ -1,5 +1,6 @@
 *
-      subroutine eqmol_pe(tt,pgin,pgas,pe,xih,xihm,kk,niter,skiprelim)
+      subroutine eqmol_pe(tt,pgin,pgas,pe,xih,xihm,kk,niter,skiprelim,
+     &                     ioutr)
 *     
 * this version for computing pgas from T,Pe with LU-decompsition of
 * the matrix in die_pe_lu. BPz 09/07-1999
@@ -40,6 +41,7 @@ C                                                       modif    22/11/88
         implicit none
         include 'spectrum.inc'
         integer maxim
+        integer ioutr
         parameter (maxim=1000)
 	character*128 MET,MOLEC
         common/files/molec,met
@@ -296,19 +298,20 @@ cc        print*,'eqmol before molecpartf, nmol',nmol
         call molecpartf(tem,found)
 cc        print*,'eqmol after molecpartf, nmol',nmol
         nmotsuji=nmol
-	      call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
+	      call die_pe(tem,pe,pg,found,converge,niter,skiprelim,ioutr)
 c        if (niter.eq.-1) then
 c          call takemolec(kk,infoonly,molinquire,indexanswer)
 c          return 
 c        endif
 c
 c try something different
-c        if (.not.converge) then
+c        if ((.not.converge).and.(tem.lt.10000)) then
 c          pg=pgin
 c          do i=10,1,-1
 c            temtemp=tem*(1.+float(i)/20.)
 c            print*,'did not converge at T=',tem,' trying ',temtemp
-c            call die_pe(temtemp,pe,pg,found,converge,niter,skiprelim)
+c            call die_pe(temtemp,pe,pg,found,converge,niter,
+c     &       skiprelim,ioutr)
 c          enddo
 c        endif
 c        call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
@@ -569,6 +572,12 @@ cc          ppk(3)=apm(j)
         endif
       enddo
       fe=pe/fictpres_h
+
+      if ((TT.gt.21500) .and. (TT.lt.21600)) then 
+        print*,'ro',PE*xmytsuji*(XMH/XKBOL)/(FE*TT)
+        print*,'xmy,XMH,XKBOL,FE',xmytsuji,xmh,xkbol,fe
+      endif
+c      rho = PE*xmytsuji*(XMH/XKBOL)/(FE*TT)
  
       fhe=fh/fe
       fce=fc/fe

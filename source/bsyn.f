@@ -166,7 +166,7 @@
       integer datnoffil,datncore,datmaxfil,datmihal,datiint
       real    isoch(1000),isochfact(1000),datisoch(1000),
      &        datisochfact(1000)
-      real    datxmyc,datscattfrac
+      real    datxmyc,datscattfrac,dattmolim_in
       character*128 datfilmet,datfilmol,datfilwavel
       character*256 datlinefil(maxfil),datdetout,
      &          datinatom,datinmod,datinabun,datcontinopac,datinpmod,
@@ -196,7 +196,7 @@
      &                 datpureLTE,
      &                 datnlte,datmodelatomfile,datdeparturefile,
      &                 datdepartbin,datcontmaskfile,datlinemaskfile,
-     &                 datsegmentsfile,datnlteinfofile
+     &                 datsegmentsfile,datnlteinfofile,dattmolim_in
 
       real amass(92,0:250),abund(92),fixabund(92),
      &         isotopfrac(92,0:250)
@@ -210,6 +210,11 @@
      &              filterfil,filttitle
       common/abundch/abch(100)
       real absave(100),symmfactor
+
+      integer ielem_b,ion_b
+      real tmolim,molh_b
+      COMMON/CI4/ IELEM_b(16),ION_b(16,5),TMOLIM,MOLH_b
+
 ***********************************************
       integer version
       data version /201/
@@ -249,6 +254,8 @@ ccc      external commn_handler
       call input
 
       tsuji=dattsuji
+      tmolim=dattmolim_in
+      print *,"TMOLIM",tmolim
       filmet=datfilmet
       filmol=datfilmol
       noffil=datnoffil
@@ -716,7 +723,8 @@ c     &      1.,1.,k,niter,skiprelim)
 * Test Plez 11-May-2018
 C
 C as in babsma, first run it with something realistic
-      call eqmol_pe(4000.0,3.2e2,pgpg,PEDUM,1.,1.,ntau+1,niter,.false.)
+      call eqmol_pe(4000.0,3.2e2,pgpg,PEDUM,1.,1.,ntau+1,niter,
+     &             .false.,3)
 C
       do 43 k=ntau,1,-1
 *      do 43 k=1,ntau
@@ -732,7 +740,8 @@ c        endif
         tp=t(k)
         pep=pe(k)
 c        if (T(k).lt.1000000.0) then
-          call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,skiprelim)
+          call eqmol_pe(t(k),pg(k),pgpg,pe(k),1.,1.,k,niter,
+     &                       skiprelim,0)
 c        print*,'eqmol_pe calculated ',niter,' iterations'
 c        print*,k,pg(k),pgpg,ro(k),rhotsuji
 
@@ -1706,7 +1715,7 @@ cc         CALL VOIGT(A(j),V,HVOIGT)
             absave(ieliel) = abund(ieliel)
           endif
         enddo
-
+        print *,'lambda',xlambda(1),xlambda(maxlam),del
         write(46) '''* Output from TurboCanary'''
         write(46) '''*'''
         write(46) '''* Model atmosphere'''

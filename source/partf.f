@@ -110,11 +110,11 @@
             else
               t=dlog(dble(tt))
               ulog=   a(0,ion,jatom)+
-      &           t*(a(1,ion,jatom)+
-      &           t*(a(2,ion,jatom)+
-      &           t*(a(3,ion,jatom)+
-      &           t*(a(4,ion,jatom)+
-      &           t*(a(5,ion,jatom))))))
+     &            t*(a(1,ion,jatom)+
+     &            t*(a(2,ion,jatom)+
+     &            t*(a(3,ion,jatom)+
+     &            t*(a(4,ion,jatom)+
+     &            t*(a(5,ion,jatom))))))
               u(i)=real(dexp(ulog))
             endif
           else if(temp(i).gt.16000.) then
