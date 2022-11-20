@@ -127,6 +127,17 @@ C
       LOGICAL FIRST,borysow
       DATA FIRST/.TRUE./
       data borysow/.true./
+
+      integer ielem,ion
+      real tmolim,molh
+      COMMON/CI4/ IELEM(16),ION(16,5),TMOLIM,MOLH
+
+      real ptio,rosav,poxg1
+      COMMON /TIO/PTIO(NDP),ROsav(NDP),POXG1(NDP)
+
+      real ::hnh2
+      logical skip_molecules
+      logical, save::first_debug=.true.
 C
 C SAVE ABSORPTION COMPONENT NAMES THE FIRST TIME DETABS IS CALLED
 C
@@ -157,6 +168,23 @@ C
         FIRST=.FALSE.
       endif
 *
+      skip_molecules=.false.
+      if(T(NTP).gt.TMOLIM) then
+        if (first_debug) then
+            print*, "Skipping molecules in detabs"
+            print*, "presneutral",presneutral(ntp,:)
+            print*, "presion",presion(ntp,:)
+            print*, 'H-diff',presneutral(ntp,1),
+     &       F1*1./(XMH*XMY)*rosav(NTP)*1.38066d-16*t(ntp)
+            first_debug=.false.
+        endif
+        skip_molecules=.true.
+c no molecules (HI treated differently below)
+        partryck = 0.0 
+      endif
+c
+c      -------> skip all stuff with molecs
+c
       TETA=5040./T(NTP)
       HN=1./(XMH*XMY)
       IF(JP.GT.0) goto 7
@@ -164,7 +192,7 @@ C
 C        1. COMPUTATION OF WAVELENGTH-INDEPENDENT QUANTITIES
 C
       HNH=F1*HN
-      rhokt=rho*1.38066d-16*t(ntp)
+      rhokt=rosav(NTP)*1.38066d-16*t(ntp)
       kt=1.38066e-16*t(ntp)
 ***************************************************************************
 *** alternative, strictement equivalente:
@@ -173,10 +201,33 @@ C
 ***      hn=1./(xmh*xmytsuji)
 * ON POURRAIT CHANGER PART EN G0 G1 etc...
 ***************************************************************************
+c  -- When there are no molec, we set their contribution to 0 here   --
+c  -- The pressure for the atoms is computed in equmol though        --  
+c  -- If that is not true, one needs to replace this part with       -- 
+c  -- anjon arrays (as in the original code). This has to clarified. --
+c  -- H- we still include, even though it is treated as a molecule.  --
+c
+c  -- Question: Can we use presneutral, presion even if there is no  --
+c  -- iteration? Or do we have to use anjon (fron jon)               --
+c  -- if so, where do the relations come from? So why e.g            --
+c            c i
+c          fakt(22)=anjon(3,1)*abund(3)*hn*  9.  /part(3,1)
+c            mg i
+c          fakt(23)=anjon(8,1)*abund(8)*hn/part(8,1)
+c            al i
+c          fakt(24)=anjon(9,1)*abund(9)*hn*  6.  /part(9,1)
+c            si i
+c          fakt(25)=anjon(10,1)*abund(10)*hn*  9.  /part(10,1)
+ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
 C        H-
 ! H- data in jonabs-v19.2 are in cm^2.  BPz 26/04-2019
 !      fakt(1)=(1.d-18/rhokt)*partryck(ntp,1)
-      fakt(1)=(1.d0/rhokt)*partryck(ntp,1)
+      if (.not.skip_molecules) then
+        fakt(1)=(1.d0/rhokt)*partryck(ntp,1)
+      else
+        fakt(1)=pe(ntp)*hnh/xkhm
+      endif
       if (nametryck(1).ne.'H -') then 
         print*,nametryck(1), 'should be H-'
         stop 'PROBLEM in detabs!'
@@ -215,6 +266,38 @@ C        FREE-FREE HI ABSORPTION
       IF(H(1).LT.XNIV+0.5)ADDF=0.
       FAKT(18)=EXPJ
       HREST(NTP)=EXPJ*ADDF
+c
+c
+c
+c Add a backup part if the presneutral array is NaN
+c Take this from the original opacity package
+c
+c
+      if(isnan(presneutral(ntp,2))) then
+         print*,'WARNING: There is a nan in the pressure'
+         print*,'Use legacy opacity package.'
+         print*,'H+H. H2+, H2-, C I, Mg I, Al I, Si I, He I'
+         print*,presneutral(ntp,1),hnh*rhokt
+c
+c        hnh = anjon(1,1) *hn
+c         
+         presneutral = 0.0
+         presion     = 0.0
+         presneutral(ntp,1) = hnh *rhokt
+c           c i
+         presneutral(ntp,6)  = anjon(3,1)*abund(3)*hn*9. *rhokt
+c           mg i
+         presneutral(ntp,12) = anjon(8,1)*abund(8)*hn *rhokt
+c           al i
+         presneutral(ntp,13) = anjon(9,1)*abund(9)*hn*6. *rhokt
+c           si i
+         presneutral(ntp,14) = anjon(10,1)*abund(10)*hn*9. *rhokt
+c           he i
+         presneutral(ntp,2)  = anjon(2,1)*abund(2)*hn *rhokt
+c         
+         fakt(19)=pe(ntp)*hnh*2.e-26/part(1,1)
+      endif
+c
 C
 C        H+H
 * note ro == rho (set in jon)
@@ -224,7 +307,12 @@ C        H2+
       fakt(21)=(presneutral(ntp,1)*(1.d-20/rhokt))*
      &         (presion(ntp,1)*(1.e-20/kt))
 C        H2- ff
-      fakt(22)=pe(ntp)*partryck(ntp,2)/rhokt
+c      if(.not.skip_molecules) then
+      if(.not.skip_molecules) then
+        fakt(22)=pe(ntp)*partryck(ntp,2)/rhokt
+      else
+        fakt(22)=0.0
+      endif
       if (nametryck(2).ne.'H H') then 
         print*,nametryck(2), 'should be H2'
         stop 'PROBLEM in detabs!'
@@ -236,7 +324,7 @@ C        He I ff
       fakt(24)=pe(ntp)*(1.e-20/kt)*presion(ntp,2)*(1.d-20/rhokt)
 C        He- (stimulated emission included in table)
       fakt(25)=pe(ntp)*presneutral(ntp,2)*(1.d-26/rhokt)
-C        C I
+C        C I    presneutral(ntp,i)/rhokt = anjon(3,1) abund(3) 1./(xmh*xmy) *9
       fakt(26)=presneutral(ntp,6)/(rhokt*part(3,1))
 C        C II
       fakt(27)=presion(ntp,6)/(rhokt*part(3,2))
@@ -259,13 +347,15 @@ C        O II
 C        O- (stimulated emission included in table)
       fakt(36)=pe(ntp)*presneutral(ntp,8)*(1.d-26/rhokt)
 C        CO-ff (stimulated emission included in table) BPz 1/10-1996
-      fakt(37)=pe(ntp)*partryck(ntp,7)*(1.d-26/rhokt)
+      if(.not.skip_molecules) 
+     &       fakt(37)=pe(ntp)*partryck(ntp,7)*(1.d-26/rhokt)
       if (nametryck(7).ne.'C O ') then 
         print*,nametryck(7), 'should be CO'
         stop 'PROBLEM in detabs!'
       endif
 C        H2O-ff (stimulated emission included in table) BPz 30/09-1996
-      fakt(38)=pe(ntp)*partryck(ntp,4)*(1.d-26/rhokt)
+      if(.not.skip_molecules) 
+     &       fakt(38)=pe(ntp)*partryck(ntp,4)*(1.d-26/rhokt)
       if (nametryck(4).ne.'H O H ') then 
         print*,nametryck(4), 'should be H2O'
         stop 'PROBLEM in detabs!'
@@ -292,13 +382,15 @@ C        FE II
       fakt(47)=presion(ntp,26)/(rhokt*part(15,2))
 * presion/(rho*k*T) = no of Fe II per gram stellar matter
 c        CH
-      fakt(48)=partryck(ntp,6)*13.02/(6.023d23*rhokt)
+      if(.not.skip_molecules) 
+     &       fakt(48)=partryck(ntp,6)*13.02/(6.023d23*rhokt)
       if (nametryck(6).ne.'C H') then 
         print*,nametryck(6), 'should be CH'
         stop 'PROBLEM in detabs!'
       endif
 c        OH
-      fakt(49)=partryck(ntp,5)*17.01/(6.023d23*rhokt)
+      if(.not.skip_molecules) 
+     &       fakt(49)=partryck(ntp,5)*17.01/(6.023d23*rhokt)
       if (nametryck(5).ne.'O H') then 
         print*,nametryck(5), 'should be OH'
         stop 'PROBLEM in detabs!'
@@ -481,7 +573,7 @@ cc        call h2borysowopac(omega,t(ntp),propac)
         CALL H2OPAC(OMEGA,T(NTP),PROPAC)
       endif
       H2PRES=PROPAC*PHTVA(NTP)/stim
-      if (isnan(H2PRES)) then
+      if (isnan(H2PRES).or.skip_molecules) then
             H2PRES=0.0
       endif
       PROV(NPROVA-3)=H2PRES
@@ -493,7 +585,7 @@ cc        call heborysowopac(omega,t(ntp),propac)
         CALL HEOPAC(OMEGA,T(NTP),PROPAC)
       endif
       HEPRES=PROPAC*PHEL(NTP)/stim
-      if (isnan(HEPRES)) then
+      if (isnan(HEPRES).or.skip_molecules) then
             HEPRES=0.0
       endif
 c      print *, 'PROPAC PHEL stim',PROPAC,PHEL(NTP),stim
@@ -505,7 +597,7 @@ c
         stop '1 in detabs'
       endif
       h2hpres=propac*ph2h(ntp)/stim
-      if (isnan(h2hpres)) then
+      if (isnan(h2hpres).or.skip_molecules) then
             h2hpres=0.0
       endif
       prov(nprova-1)=h2hpres
@@ -516,14 +608,15 @@ c
         stop '2 in detabs'
       endif
       hhepres=propac*phhe(ntp)/stim
-      if (isnan(hhepres)) then
+      if (isnan(hhepres).or.skip_molecules) then
             hhepres=0.0
       endif
       prov(nprova)=hhepres
 *
-c      if (isnan(sumabs)) print*,'already is nan'
+c      if (isnan(STIM)) print*,'already is nan'
       SUMABS=SUMABS+H2PRES+HEPRES+h2hpres+hhepres
       SUMABS=SUMABS*STIM
+c      if(T(NTP).gt.383800) print*,'sumabs',sumabs 
 c      print*,'detabs H2PRES,HEPRES,h2hpres,hhepres',
 c     &   H2PRES,HEPRES,h2hpres,hhepres
 c      print*,'detabs PROPAC,PHEL(NTP),stim,fac',
@@ -551,6 +644,33 @@ c (but it is added into the pure absorption coefficient, as all his H I opacity)
 *****************
 * add h2 from old detabs
       RAYH2=XRAY2*XRAY2*(8.14E-13+XRAY2*(1.28E-6+XRAY2*1.61))*H2RAY(NTP)
+c      if ((T(NTP).gt.1796.).and.(T(NTP).lt.1798.)) then
+c          print*,'presh',presneutral(ntp,1),hnh*rhokt
+c         print*, 'new-h',presneutral(ntp,1) , 
+c     &           'old-h', hnh *rhokt
+c         print*, 'new-c',presneutral(ntp,6) , 
+c     &            'old-c', anjon(3,1)*abund(3)*hn*9. *rhokt
+c         print*, 'new-mg',presneutral(ntp,12), 
+c     &           'old-mg', anjon(8,1)*abund(8)*hn *rhokt
+c         print*, 'new-al',presneutral(ntp,13), 
+c     &            'old-al', anjon(9,1)*abund(9)*hn*6. *rhokt
+c         print*, 'new-si',presneutral(ntp,14), 
+c     &            'old-si', anjon(10,1)*abund(10)*hn*9. *rhokt
+c         print*, 'new-he',presneutral(ntp,2) , 
+c     &            'old-he', anjon(2,1)*abund(2)*hn *rhokt
+c         
+c         fakt(19)=pe(ntp)*hnh*2.e-26/part(1,1)
+c      endif
+c      if  ((T(NTP).gt.549000.).and.(T(NTP).lt.550001.)) then
+c        if(isnan(RAYH)) print*,'RAYH is nan'
+c        if(isnan(RAYH2)) print*,'RAYH2 is nan'
+c        if(isnan(RAYHe)) print*,'RAYHe is nan'
+c      endif
+      if (skip_molecules) then
+        if(isnan(RAYH)) RAYH = 0.0
+        if(isnan(RAYH2)) RAYH2 = 0.0
+        if(isnan(RAYHe)) RAYHe = 0.0
+      endif
       SUMSCA=ELS(NTP)+RAYH+RAYH2+RAYHe
       PROV(NPROV-3)=ELS(NTP)
       PROV(NPROV-2)=RAYH

@@ -332,8 +332,11 @@ c
         stop 'PROBLEM in absko!'
       endif
 ! convert to cm^2/g of star
-      sumabs = sumabs + opnh * 1.d-16 *
-     &    partryck(ntp,13) / (t(ntp)*1.38066d-16) / rosav(ntp)
+      if(.not.(t(ntp).gt.tmolim)) then
+        sumabs = sumabs + opnh * 1.d-16 *
+     &    partryck(ntp,13) / (t(ntp)*1.38066d-16) /
+     &    rosav(ntp)
+      endif
 ! NH cont included !
 C
       if (J.gt.0) then

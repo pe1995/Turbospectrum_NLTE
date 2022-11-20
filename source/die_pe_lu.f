@@ -307,6 +307,20 @@ c          if (nelemi.ne.2) then
           p(nelemx(i))=p(nelemx(i))*(pe/pep)
         enddo
       endif
+c
+c
+c Fill the arrays with the prelim. solution when we dont iterate
+      do i=1,nmetal
+        nelemi=nelemx(i)
+        parptsuji(i)=p(nelemi)
+        parptsuji(i+nmetal)=p(nelemi)*kp1(nelemi)/pe
+        parptsuji(i+2*nmetal)=parptsuji(i+nmetal)*kp2(nelemi)/pe
+        parptsuji(i+3*nmetal)=parptsuji(i+2*nmetal)*kp3(nelemi)/pe
+cc        print*,'check die',nelemi,parptsuji(i),parptsuji(i+nmetal),
+cc     &   parptsuji(i+2*nmetal),parptsuji(i+3*nmetal)
+      enddo
+
+
 C
 C    RUSSELL EQUATIONS
 
@@ -333,6 +347,29 @@ C    RUSSELL EQUATIONS
         first=.false.
 c        if(niter_in.eq.-1) return
       endif
+c
+c
+c This needs to be done to avoid nans when there are no molecules
+      if (ioutr.eq.2) then
+        converge=.false.
+        do i=1,nmol
+          parptsuji(i+4*nmetal)=0.0
+        enddo
+        return
+        molions=.false.
+      endif
+      if ((tem.gt.tmolim) .and. (ioutr.ne.3)) then
+        converge=.false.
+        do i=1,nmol
+          parptsuji(i+4*nmetal)=0.0
+        enddo
+        return
+         molions=.false.
+      endif
+c
+c
+c
+c
 *
 * Start of the Newton-Raphson iteration on the neutral atomic pressures
 
@@ -469,12 +506,17 @@ cc        print*,'Pe, pg ' ,fp(99),pg
         fminold=fmin
 
 ***************************************************
-        if ((tem.gt.tmolim) .and. (ioutr.ne.3)) then
-          print *,'die_pe: Skipping because of TMOLIM',
-     &                     tem,ioutr
-          converge=.false.
-          return
-        endif
+c        if (ioutr.eq.2) then
+c this is for atmoic computations to happen properly
+c          converge=.false.
+c          return
+c        endif
+c        if ((tem.gt.tmolim) .and. (ioutr.ne.3)) then
+c          print *,'die_pe: Skipping because of TMOLIM',
+c     &                     tem,ioutr
+c          converge=.false.
+c          return
+c        endif
 
         call ludcmp(fjac,nmetal,100,indx,dd,singular)
         if (singular) then

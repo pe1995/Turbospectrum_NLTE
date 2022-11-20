@@ -104,6 +104,9 @@ c
 c
 c
 c
+      real ANJON_backup(16,5)
+c
+c
 c
       data chck/.false./ ,pgpgpg/-1.0/
       data kkp/-1/
@@ -121,6 +124,12 @@ C
 cc      print*,'entering jon with iepro = ',iepro
 cc      print*,'jon, T, Pe, pgin = ',t,pe,pg
       pgpgpg=pg
+** might try a better guess, if Pg already known.
+       if (pgpgpg.le.0.) then
+         pgin= 1.
+       else
+         pgin=pgpgpg
+       endif
 *****************************************************************************************
       ITP=1
 C Is it the same T,pe point?
@@ -235,10 +244,12 @@ C        THE PARTITION FUNCTION IS CONSTANT
    15 PART(I,J)=PARTP
 c
 c
-        if ((.not.first) .and. 
-     &          ( (T>TMOLIM.and.(IOUTR.ne.3))
-     &                     .or.
-     &           (fail_redo.or.(IOUTR.eq.-1)) )) then
+c        if ((.not.first) .and. 
+c     &          ( (T>TMOLIM.and.(IOUTR.ne.3))
+c     &                     .or.
+c     &           (fail_redo.or.(IOUTR.eq.-1)) )) then
+c
+      if (.not.first) then
 c     
             NELEMI = NELEMX(I)
 c
@@ -340,12 +351,17 @@ c          first=.false.
 c      endif
 c      if ((T.gt.21500) .and. (T.lt.21600)) print *,
 c     &       'anjon(1,1),anjon(1,2)',anjon(1,1),anjon(1,2)
+      ANJON_backup = ANJON
+
       if (fail_redo) goto 42
       if ((T.gt.21500) .and. (T.lt.21600)) then
           print*,'t,pe,ro,anjon (before)',t,pe,anjon(1,1),anjon(1,2)
       endif
       IF((T.GT.TMOLIM) .and. (IOUTR.ne.3))then
-        GO TO 42
+c we skip the molecules, but we still do the call to fill the arrays needed (in detabs)
+         call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,niter,
+     &                skiprelim,2)      
+         GO TO 42
       endif
 C TMOLIM from TABGEN
 c These are situation when the molecular eq usually fails
@@ -354,6 +370,9 @@ c          GO TO 42
 c      endif
       IF (IOUTR.eq.-1) then
             fail_redo = .true.
+c we skip the molecules, but we still do the call to fill the arrays needed (in defabs)
+         call eqmol_pe(t,pgin,pg,pe,xih,xihm,kk,niter,
+     &                skiprelim,2)     
           GO TO 42 
       endif
 c      IF((T.LT.1500.0).and.(log(RO).gt.-17)) then
@@ -383,12 +402,6 @@ C        FORMATION OF MOLECULES COMPOSED OF H,C,N,O
       ABUC=ABUND(3)/ABUND(1)
       ABUN=ABUND(4)/ABUND(1)
       ABUO=ABUND(5)/ABUND(1)
-** might try a better guess, if Pg already known.
-      if (pgpgpg.le.0.) then
-        pgin= 1.
-      else
-        pgin=pgpgpg
-      endif
 *
 * is the T, P point close to previous one?
 
@@ -484,7 +497,10 @@ ccc      print*,'jon: new ejon:',ejontsuji
       GOTO 46
 C
 C        NO MOLECULES
-   42 F2=ANJON(1,2)
+   42 continue
+C Restore the anjon array from before just in case     
+      ANJON=ANJON_backup 
+      F2=ANJON(1,2)
       FE=XNENH+F2
       F1=ANJON(1,1)
       F3=0.

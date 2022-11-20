@@ -317,6 +317,16 @@ c        endif
 c        call die_pe(tem,pe,pg,found,converge,niter,skiprelim)
 c it really did not work
         if (.not.converge) then
+          if(ioutr.eq.2) then
+c            do i=1,nmetal
+c              nelemi=nelemx(i)
+c              presneutral(kk,nelemi)=parptsuji(i)
+c              presion(kk,nelemi)=parptsuji(i+nmetal)
+c              presion2(kk,nelemi)=parptsuji(i+2*nmetal)
+c              presion3(kk,nelemi)=parptsuji(i+3*nmetal)
+c            enddo
+            call takemolec(kk,infoonly,molinquire,indexanswer)
+          endif
           pgas=-1.0
           return
         endif
