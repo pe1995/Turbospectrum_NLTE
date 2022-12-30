@@ -707,7 +707,7 @@ c            else                                                   ! H fully ne
 c              pe(k)= 1e-4*rhobow(k)/2.380491d-24*
 c     &         kboltz*t(k)
 c            end if
-            xi(k)=0.0
+            xi(k)=1.0
             velocity(k)=0.0
 c            if (T(k).gt.1000000) skip_molecules(k) = -1
 c            if ((T(k).lt.1500).and.(log(rhobow(k)).gt.-17)) 

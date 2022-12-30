@@ -179,6 +179,7 @@ C
             first_debug=.false.
         endif
         skip_molecules=.true.
+        rho=rosav(NTP)
 c no molecules (HI treated differently below)
         partryck = 0.0 
       endif
@@ -283,18 +284,40 @@ c        hnh = anjon(1,1) *hn
 c         
          presneutral = 0.0
          presion     = 0.0
+c           H
          presneutral(ntp,1) = hnh *rhokt
+         presion(ntp,1)     = anjon(1,2)*hn *rhokt
 c           c i
-         presneutral(ntp,6)  = anjon(3,1)*abund(3)*hn*9. *rhokt
-c           mg i
-         presneutral(ntp,12) = anjon(8,1)*abund(8)*hn *rhokt
-c           al i
-         presneutral(ntp,13) = anjon(9,1)*abund(9)*hn*6. *rhokt
-c           si i
-         presneutral(ntp,14) = anjon(10,1)*abund(10)*hn*9. *rhokt
-c           he i
+c         presneutral(ntp,6)  = anjon(3,1)*abund(3)*hn *rhokt ! *9
+c         presion(ntp,6)      = anjon(3,2)*abund(3)*hn *rhokt ! *9
+cc           mg i
+c         presneutral(ntp,12) = anjon(8,1)*abund(8)*hn *rhokt 
+c         presion(ntp,12)     = anjon(8,2)*abund(8)*hn *rhokt 
+cc           al i
+c         presneutral(ntp,13) = anjon(9,1)*abund(9)*hn *rhokt ! *6
+c         presion(ntp,13)     = anjon(9,2)*abund(9)*hn *rhokt ! *6
+cc           si i
+c         presneutral(ntp,14) = anjon(10,1)*abund(10)*hn *rhokt ! *9
+c         presion(ntp,14)     = anjon(10,2)*abund(10)*hn *rhokt ! *9
+cc           he i
          presneutral(ntp,2)  = anjon(2,1)*abund(2)*hn *rhokt
-c         
+         presion(ntp,2)      = anjon(2,2)*abund(2)*hn *rhokt
+cc         
+cc Is it that simple for the others?
+cc           N
+c         presneutral(ntp,7)  = anjon(4,1)*abund(4)*hn *rhokt 
+c         presion(ntp,7)      = anjon(4,2)*abund(4)*hn *rhokt 
+cc           O
+c         presneutral(ntp,8)  = anjon(5,1)*abund(5)*hn *rhokt 
+c         presion(ntp,8)      = anjon(5,2)*abund(5)*hn *rhokt
+cc           Ca
+c         presneutral(ntp,20)  = anjon(13,1)*abund(13)*hn *rhokt 
+c         presion(ntp,20)      = anjon(13,2)*abund(13)*hn *rhokt
+cc           Fe
+c         presneutral(ntp,26)  = anjon(15,1)*abund(15)*hn *rhokt 
+c         presion(ntp,26)      = anjon(15,2)*abund(15)*hn *rhokt
+c
+c
          fakt(19)=pe(ntp)*hnh*2.e-26/part(1,1)
       endif
 c

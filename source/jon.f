@@ -104,7 +104,7 @@ c
 c
 c
 c
-      real ANJON_backup(16,5)
+      real ANJON_backup(16,5),PART_backup(16,5)
 c
 c
 c
@@ -352,6 +352,7 @@ c      endif
 c      if ((T.gt.21500) .and. (T.lt.21600)) print *,
 c     &       'anjon(1,1),anjon(1,2)',anjon(1,1),anjon(1,2)
       ANJON_backup = ANJON
+      PART_backup  = PART
 
       if (fail_redo) goto 42
       if ((T.gt.21500) .and. (T.lt.21600)) then
@@ -500,6 +501,7 @@ C        NO MOLECULES
    42 continue
 C Restore the anjon array from before just in case     
       ANJON=ANJON_backup 
+      PART=PART_backup
       F2=ANJON(1,2)
       FE=XNENH+F2
       F1=ANJON(1,1)
@@ -512,6 +514,7 @@ C Restore the anjon array from before just in case
       phydro=fsum*pe/fe
    43 PG=PE*(1.+(FSUM+SUMH)/FE)
       RO=PE*XMY*(XMH/XKBOL)/(FE*T)
+      rosave=ro
       if ((T.gt.21500) .and. (T.lt.21600)) then
           print*,'t,pe,ro,anjon (after)',t,pe,XMY,XMH,XKBOL,FE
       endif
